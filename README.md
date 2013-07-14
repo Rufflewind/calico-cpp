@@ -1,0 +1,4 @@
+Calico
+======
+
+Utilities for C++.
