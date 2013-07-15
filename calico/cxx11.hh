@@ -49,6 +49,23 @@
     && !defined(HAVE_TRAILING_RETURN)
 #   define HAVE_TRAILING_RETURN
 #endif
+#if (defined(HAVE_CXX11)                           \
+     || (defined(__GXX_EXPERIMENTAL_CXX0X__)       \
+         && __GNUC__ >= 4 && __GNUC_MINOR__ >= 6)) \
+    && !defined(HAVE_CONSTEXPR)
+#   define HAVE_CONSTEXPR
+#else
+#   define constexpr
+#endif
+#if (defined(HAVE_CXX11)                           \
+     || (defined(__GXX_EXPERIMENTAL_CXX0X__)       \
+         && __GNUC__ >= 4 && __GNUC_MINOR__ >= 6)) \
+    && !defined(HAVE_NOEXCEPT)
+#   define HAVE_NOEXCEPT
+#else
+#   define noexcept
+#   define noexcept(x)
+#endif
 
 // Type traits is only available on C++11
 #ifdef HAVE_TYPE_TRAITS
