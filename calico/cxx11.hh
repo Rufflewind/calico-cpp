@@ -1,5 +1,5 @@
-#ifndef FZ_CXX11_H
-#define FZ_CXX11_H
+#ifndef FZ_CXX11_HH
+#define FZ_CXX11_HH
 #include <climits>
 #include <cstddef>
 #include <iterator>
@@ -64,7 +64,6 @@
 #   define HAVE_NOEXCEPT
 #else
 #   define noexcept
-#   define noexcept(x)
 #endif
 
 // Type traits is only available on C++11
