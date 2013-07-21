@@ -65,6 +65,10 @@
 #else
 #   define noexcept
 #endif
+#if (defined(HAVE_CXX11) || _MSC_VER >= 1600)     \
+    && !defined(HAVE_ADDRESSOF)
+#   define HAVE_ADDRESSOF
+#endif
 
 // Type traits is only available on C++11
 #ifdef HAVE_TYPE_TRAITS
@@ -265,6 +269,16 @@ typedef HAVE_UINT32 uint32_t;
 #endif
 #ifdef HAVE_UINT64
 typedef HAVE_UINT64 uint64_t;
+#endif
+
+#ifdef HAVE_ADDRESSOF
+using std::addressof
+#else
+template<class T>
+T* addressof(T& x) {
+    return reinterpret_cast<T*>(
+        &const_cast<char&>(reinterpret_cast<const volatile char&>(x)));
+}
 #endif
 
 #ifdef HAVE_FOR_RANGE

@@ -47,102 +47,132 @@ inline T parse(const char* s) { _priv::parse<T>(s); }
 //////////////////////////////////////////////////////////////////////////////
 // Null-terminated iterator
 
-/// A `RandomAccessIterator` that allows traversing the elements of a
-/// null-terminated string.  Note that traversing beyond the range of the
-/// string or dereferencing the last iterator is undefined behavior.
-template<class CharT>
-class null_terminated_iterator
-    : public std::iterator<std::random_access_iterator_tag, CharT> {
+/// A `ForwardIterator` that traverses a null-terminated array.
+///
+/// @tparam T    The element type of the array.  Must be
+///              `DefaultConstructible`, `Destructible`, and
+///              `EqualityComparable`.
+///
+/// A *null-terminated array* is an array of elements in which the
+/// past-the-end element is determined by a default-constructed value of the
+/// element type.  Elements before the past-the-end element are forbidden to
+/// have the same value as the default-constructed value.  A typical example
+/// would be a null-terminated array of `char`s (a plain C string).
+///
+/// This iterator allows forward iteration from the first value of the array
+/// to the last value of the array, just before the past-the-end element.
+/// Elements beyond the past-the-end element are not considered to be part of
+/// the null-terminated array.
+///
+/// The construction of this iterator does not require the position of the
+/// past-the-end element and thus it has O(1) complexity with respect to the
+/// length of the string.
+///
+/// The following actions will invoke undefined behavior:
+///
+/// - Traversing beyond the range of the null-terminated array.
+///
+/// - Dereferencing the past-the-end iterator.
+///
+/// - Comparing equality or inequality with iterators constructed from
+///   different pointers.
+///
+/// - Using the iterator in any way after the array has been invalidated.
+///
+template<class T>
+class null_terminated_iterator {
 public:
-    typedef std::iterator<std::random_access_iterator_tag, CharT> base_type;
-    typedef null_terminated_iterator this_type;
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::pointer pointer;
-    typedef typename base_type::reference reference;
-    typedef typename base_type::difference_type difference_type;
-    explicit null_terminated_iterator(pointer s = 0) : _p(s) {}
+
+    /// Iterator category.
+    typedef std::forward_iterator_tag iterator_category;
+
+    /// Value type.
+    typedef T value_type;
+
+    /// Pointer type.
+    typedef value_type* pointer;
+
+    /// Reference type.
+    typedef value_type& reference;
+
+    /// Difference type.
+    typedef std::ptrdiff_t difference_type;
+
+    /// Constructs a null-terminated iterator from a pointer.
+    ///
+    /// @param ptr   A pointer to the first element.
+    /// @param end   Whether a past-the-end iterator is to be constructed.
+    explicit null_terminated_iterator(pointer ptr, bool end = false)
+        : _p(end ? 0 : ptr) {}
+
+    /// Dereferences the iterator.
     reference operator*() const {
         return *_p;
     }
+
+    /// Member access of the element pointed to by the iterator.
     pointer operator->() const {
         return &**this;
     }
-    this_type& operator++() {
-        return *this += 1;
+
+    /// Increments the iterator and returns the incremented iterator.
+    null_terminated_iterator& operator++() {
+        ++_p;
+        return *this;
     }
-    this_type operator++(int) {
-        this_type i = *this;
+
+    /// Increments and returns the iterator prior to the increment.
+    null_terminated_iterator operator++(int) {
+        null_terminated_iterator i = *this;
         ++*this;
         return i;
     }
-    this_type& operator+=(difference_type offset) {
-        _p += offset;
-        return *this;
-    }
-    this_type& operator-=(difference_type offset) {
-        return *this += -offset;
-    }
-    bool operator==(const this_type& other) const {
+
+    /// Compares two iterators for equality.
+    bool operator==(const null_terminated_iterator& other) const {
         return _p == other._p || (_end() && other._end());
     }
-    bool operator!=(const this_type& other) const {
+
+    /// Compares two iterators for inequality.
+    bool operator!=(const null_terminated_iterator& other) const {
         return !(*this == other);
     }
-    bool operator<=(const this_type& other) const {
-        return other._end() || (!_end() && _p <= other._p);
-    }
-    bool operator<(const this_type& other) const {
-        return *this <= other && *this != other;
-    }
-    bool operator>=(const this_type& other) const {
-        return !(*this < other);
-    }
-    bool operator>(const this_type& other) const {
-        return !(*this <= other);
-    }
-    this_type operator+(difference_type n) const {
-        this_type self = *this;
-        return self += n;
-    }
-    this_type operator-(difference_type n) const {
-        return *this + (-n);
-    }
-    difference_type operator-(const this_type& i) const {
-        return _p - i._p;
-    }
-    reference operator[](const difference_type& n) const {
-        return *(*this + n);
-    }
-    friend this_type operator+(difference_type n, const this_type& i) {
-        return i + n;
-    }
-    friend this_type operator-(difference_type n, const this_type& i) {
-        return i - n;
-    }
+
 private:
     pointer _p;
+    // A null pointer and a pointer to a null character are both valid
+    // past-the-end iterators and are treated the same for all intents and
+    // purposes.  Because of the presence of this special value, the iterator
+    // cannot be bidirectional since that `--end` would not return a valid
+    // result.
+    //
+    // Furthermore, there is no guarantee that i += X will result in defined
+    // behavior since the end-point is unknown.  Therefore, operations that
+    // increment by more than 1 are unreliable.
     bool _end() const {
-        // A null pointer and a pointer to a null character are both valid end
-        // iterators and are treated the same for all intents and purposes.
-        // Because of the presence of this special value, the iterator cannot
-        // be truly Bidirectional since that `--end_iterator` would not return
-        // a valid result.
         return !_p || *_p == value_type();
     }
 };
 
-/// Returns an iterator to the beginning of a null-terminated string.
-template<class CharT>
-inline null_terminated_iterator<CharT> begin_cstr(CharT* s) {
-    return null_terminated_iterator<CharT>(s);
+/// Returns a `ForwardIterator` to the first element of a null-terminated
+/// array.
+///
+/// @param ptr   A pointer to the first element.
+///
+/// @see null_terminated_iterator
+template<class T>
+inline null_terminated_iterator<T> null_terminated_begin(T* ptr) {
+    return null_terminated_iterator<T>(ptr);
 }
 
-/// Returns an iterator to the end a null-terminated string with O(1)
-/// complexity.
-template<class CharT>
-inline null_terminated_iterator<CharT> end_cstr(CharT*) {
-    // Return the universal end iterator so we don't have to compute 'strlen'
-    return null_terminated_iterator<CharT>();
+/// Returns a past-the-end `ForwardIterator` for a null-terminated array.
+///
+/// @param ptr   A pointer to the first element.
+///
+/// @see null_terminated_iterator
+template<class T>
+inline null_terminated_iterator<T> null_terminated_end(T* ptr) {
+    return null_terminated_iterator<T>(ptr, true);
 }
 
 }
