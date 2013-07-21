@@ -1,29 +1,20 @@
 #ifndef FZ_ITERATOR_HH
 #define FZ_ITERATOR_HH
+#include <iterator>
 #include "cxx11.hh"
 namespace fz {
 
 /// An iterator adapter that automatically counts the offset as the iterator
 /// moves.
 template<class Iterator>
-class counted_iterator
-    : public std::iterator<
-          typename std::iterator_traits<Iterator>::iterator_category,
-          typename std::iterator_traits<Iterator>::value_type,
-          typename std::iterator_traits<Iterator>::difference_type,
-          typename std::iterator_traits<Iterator>::pointer,
-          typename std::iterator_traits<Iterator>::reference> {
+class counted_iterator {
 public:
-    typedef std::iterator<
-        typename std::iterator_traits<Iterator>::iterator_category,
-        typename std::iterator_traits<Iterator>::value_type,
-        typename std::iterator_traits<Iterator>::difference_type,
-        typename std::iterator_traits<Iterator>::pointer,
-        typename std::iterator_traits<Iterator>::reference> base_type;
-    typedef typename base_type::value_type value_type;
-    typedef typename base_type::difference_type difference_type;
-    typedef typename base_type::pointer pointer;
-    typedef typename base_type::reference reference;
+    typedef std::iterator_traits<Iterator> base_traits;
+    typedef typename base_traits::iterator_category iterator_category;
+    typedef typename base_traits::value_type value_type;
+    typedef typename base_traits::difference_type difference_type;
+    typedef typename base_traits::pointer pointer;
+    typedef typename base_traits::reference reference;
     typedef counted_iterator this_type;
     typedef Iterator iterator_type;
     counted_iterator() {}
