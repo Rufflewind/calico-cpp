@@ -31,6 +31,12 @@ struct reference_to_pointer<T, T&> {
 
 }
 
+/// @addtogroup FzIterator Iterators
+///
+/// Some utility related to iterators.
+///
+/// @{
+
 /// A base class for implementing input iterators.
 ///
 /// The derived class is required to implement the following operations:
@@ -237,6 +243,8 @@ counted_iterator<Iterator> iterator_counter(
         typename counted_iterator<Iterator>::difference_type()) {
     return counted_iterator<Iterator>(i, init_count);
 }
+
+/// @}
 
 }
 #endif
