@@ -39,7 +39,7 @@
 #endif
 
 // Macros to reduce typing.  They should be #undef'ed afterwards.
-#ifdef DOC_ONLY
+#ifndef __has_feature
 #   define __has_feature(x) 0
 #endif
 #define CLANG_FEATURE(feature) (defined(__clang__) && __has_feature(feature))
@@ -268,30 +268,38 @@ typedef HAVE_UINT64 uint64_t;
 #endif
 
 #ifdef HAVE_TYPE_TRAITS
-using std::integral_constant;
-using std::false_type;
-using std::true_type;
-
-using std::is_const;
-using std::is_volatile;
-using std::is_lvalue_reference;
-using std::is_rvalue_reference;
-using std::is_reference;
 using std::add_const;
-using std::add_volatile;
 using std::add_cv;
 using std::add_lvalue_reference;
+using std::add_pointer;
 using std::add_rvalue_reference;
-using std::remove_const;
-using std::remove_volatile;
-using std::remove_cv;
-using std::remove_reference;
-using std::make_signed;
-
+using std::add_volatile;
 using std::conditional;
+using std::decay;
 using std::enable_if;
-using std::is_same;
+using std::extent;
+using std::false_type;
+using std::integral_constant;
+using std::is_array;
 using std::is_base_of;
+using std::is_const;
+using std::is_function;
+using std::is_lvalue_reference;
+using std::is_pointer;
+using std::is_reference;
+using std::is_rvalue_reference;
+using std::is_same;
+using std::is_volatile;
+using std::make_signed;
+using std::rank;
+using std::remove_all_extents;
+using std::remove_const;
+using std::remove_cv;
+using std::remove_extent;
+using std::remove_pointer;
+using std::remove_reference;
+using std::remove_volatile;
+using std::true_type;
 #else
 
 /// Represents a compile-time constant of integral type.
@@ -372,7 +380,6 @@ template<class T>
 struct add_rvalue_reference<T, true> { typedef T type; };
 }
 #endif
-
 /// Converts the type into an rvalue reference provided that `T` is not an
 /// lvalue reference.
 template<class T>
@@ -401,7 +408,6 @@ template<class T> struct remove_reference<T&> { typedef T type; };
 template<class T> struct remove_reference<T&&> { typedef T type; };
 #endif
 
-// Makes an integral type a signed type [partial implementation].
 namespace _priv {
 template<class T> struct make_signed {};
 template<> struct make_signed<unsigned char> { typedef signed char type; };
@@ -412,8 +418,8 @@ template<> struct make_signed<unsigned long> { typedef long type; };
 template<> struct make_signed<unsigned long long> { typedef long long type; };
 #endif
 }
-
-/// Converts an integral type to a signed type.
+/// Converts an integral type to a signed type (currently only works on the
+/// fundamental types).
 template<class T> struct make_signed {
     typedef typename match_cv<
         typename _priv::make_signed<
@@ -452,18 +458,124 @@ template<class Base, class Derived>
 struct is_base_of
     : integral_constant<bool, _priv::is_base_of<Base, Derived>::value> {};
 
+/// Returns the number of dimensions in the array type.
+template<class T>
+struct rank : integral_constant<std::size_t, 0> {};
+template<class T>
+struct rank<T[]> : integral_constant<std::size_t, rank<T>::value + 1> {};
+template<class T, std::size_t N>
+struct rank<T[N]> : integral_constant<std::size_t, rank<T>::value + 1> {};
+
+/// Returns whether the type is an array type.
+template<class T> struct is_array : false_type {};
+template<class T> struct is_array<T[]> : true_type {};
+template<class T, std::size_t N> struct is_array<T[N]> : true_type {};
+
+/// Obtains the number of elements along the `N`-th dimension (or zero if
+/// unknown or outside bounds).
+template<class T, unsigned N = 0>
+struct extent : integral_constant<std::size_t, 0> {};
+template<class T>
+struct extent<T[], 0> : integral_constant<std::size_t, 0> {};
+template<class T, unsigned N>
+struct extent<T[], N>
+    : integral_constant<std::size_t, extent<T, N - 1>::value> {};
+template<class T, std::size_t N>
+struct extent<T[N], 0> : integral_constant<std::size_t, N> {};
+template<class T, std::size_t I, unsigned N>
+struct extent<T[I], N>
+    : integral_constant<std::size_t, extent<T, N - 1>::value> {};
+
+/// Removes the first dimension of an array type.
+template<class T>
+struct remove_extent { typedef T type; };
+template<class T>
+struct remove_extent<T[]> { typedef T type; };
+template<class T, std::size_t N>
+struct remove_extent<T[N]> { typedef T type; };
+
+/// Removes the first dimension of an array type.
+template<class T>
+struct remove_extent { typedef T type; };
+template<class T>
+struct remove_extent<T[]> { typedef T type; };
+template<class T, std::size_t N>
+struct remove_extent<T[N]> { typedef T type; };
+
+/// Removes all the dimensions of an array type.
+template<class T>
+struct remove_all_extents { typedef T type;};
+template<class T>
+struct remove_all_extents<T[]> {
+    typedef typename remove_all_extents<T>::type type;
+};
+template<class T, std::size_t N>
+struct remove_all_extents<T[N]> {
+    typedef typename remove_all_extents<T>::type type;
+};
+
+/// Returns whether the the type is a function type (up to 5 arguments if
+/// variadic templates are not supported).
+template<class>
+struct is_function : false_type {};
+#ifdef HAVE_VARIADIC_TEMPLATE
+template<class R, class ...Args>
+struct is_function<R(Args...)> : true_type {};
+#else
+template<class R, class T>
+struct is_function<R(T)> : true_type {};
+template<class R, class T, class U>
+struct is_function<R(T, U)> : true_type {};
+template<class R, class T, class U, class V>
+struct is_function<R(T, U, V)> : true_type {};
+template<class R, class T, class U, class V, class W>
+struct is_function<R(T, U, V, W)> : true_type {};
+template<class R, class T, class U, class V, class W, class X>
+struct is_function<R(T, U, V, W, X)> : true_type {};
 #endif
 
-#ifdef HAVE_ADDRESSOF
-using std::addressof;
-#else
-/// Obtains the address of an object even if `operator&` is overloaded.
+/// Converts into a pointer type.
 template<class T>
-T* addressof(T& x) {
-    return reinterpret_cast<T*>(
-        &const_cast<char&>(reinterpret_cast<const volatile char&>(x)));
+struct add_pointer { typedef typename remove_reference<T>::type* type; };
+
+namespace _priv {
+template<class T> struct is_pointer : false_type {};
+template<class T> struct is_pointer<T*> : true_type {};
 }
-#endif
+/// Returns whether the type is an object pointer type.
+template<class T>
+struct is_pointer : _priv::is_pointer<typename remove_cv<T>::type> {};
+
+namespace _priv {
+template<class T> struct remove_pointer { typedef T type; };
+template<class T> struct remove_pointer<T*> { typedef T type; };
+}
+/// Converts to a non-pointer type.
+template<class T>
+struct remove_pointer {
+    typedef typename _priv::remove_pointer<
+        typename remove_cv<T>::type>::type type;
+};
+
+namespace _priv {
+template<class T, class U = typename remove_reference<T>::type>
+struct decay {
+    typedef typename conditional<
+        is_array<U>::value,
+        typename remove_extent<U>::type*,
+        typename conditional<
+            is_function<U>::value,
+            typename add_pointer<U>::type,
+            typename remove_cv<U>::type
+        >::type
+    >::type type;
+};
+}
+/// Performs lvalue transformations and removes cv-qualifiers.
+template<class T>
+struct decay { typedef typename _priv::decay<T>::type type; };
+
+#endif // HAVE_TYPE_TRAITS
 
 #ifdef HAVE_BEGIN_END
 using std::begin;
@@ -511,16 +623,29 @@ struct get_iterator<const std::pair<Iterator, Iterator>&,
 template<class C>
 typename get_iterator<const C&>::type begin(const C& c) { return c.begin(); }
 template<class C>
-typename get_iterator<const C&>::type end(const C& c) { return c.end(); }
-template<class C>
 typename get_iterator<C&>::type begin(C& c) { return c.begin(); }
+template<class T, std::size_t N>
+typename get_iterator<T (&)[N]>::type begin(T (&array)[N]) { return array; }
+
+template<class C>
+typename get_iterator<const C&>::type end(const C& c) { return c.end(); }
 template<class C>
 typename get_iterator<C&>::type end(C& c) { return c.end(); }
 template<class T, std::size_t N>
-typename get_iterator<T (&)[N]>::type begin(T (&array)[N]) { return array; }
-template<class T, std::size_t N>
 typename get_iterator<T (&)[N]>::type end(T (&array)[N]) { return array + N; }
-#endif
+
+#endif // HAVE_BEGIN_END
+
+#ifdef HAVE_ADDRESSOF
+using std::addressof;
+#else
+/// Obtains the address of an object even if `operator&` is overloaded.
+template<class T>
+T* addressof(T& x) {
+    return reinterpret_cast<T*>(
+        &const_cast<char&>(reinterpret_cast<const volatile char&>(x)));
+}
+#endif // HAVE_ADDRESSOF
 
 #ifdef HAVE_RVALUE
 #ifdef HAVE_RVALUE_HELPERS
@@ -551,8 +676,8 @@ constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
     static_cast<typename remove_reference<T>::type&&>(t);
 }
 
-#endif
-#endif
+#endif // HAVE_RVALUE_HELPERS
+#endif // HAVE_RVALUE
 
 /// @}
 
