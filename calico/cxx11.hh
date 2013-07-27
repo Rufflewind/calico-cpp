@@ -38,35 +38,41 @@
 #   define HAVE_CXX11 1
 #endif
 
-// Macros to reduce typing.  They should be #undef'ed afterwards.
+// Local macros to reduce typing.  They should be #undef'ed afterwards.
 #ifndef __has_feature
 #   define __has_feature(x) 0
 #endif
-#define CLANG_FEATURE(feature) (defined(__clang__) && __has_feature(feature))
-#define GCC_VERSION(major, minor)                                       \
+#define clang_feature(feature) (defined(__clang__) && __has_feature(feature))
+#define gcc_version(major, minor)                                       \
     (defined(__GXX_EXPERIMENTAL_CXX0X__)                                \
      && ( __GNUC__ == major && __GNUC_MINOR__ >= minor || __GNUC__ > major))
 
+// ---------------------------------------------------------------------------
+//
 // Language features
+// =================
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_auto_type)             \
-    || GCC_VERSION(4, 4)                        \
+    || clang_feature(cxx_auto_type)             \
+    || gcc_version(4, 4)                        \
     || _MSC_VER >= 1600
 #   undef  HAVE_AUTO
 #   define HAVE_AUTO 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_constexpr)             \
-    || GCC_VERSION(4, 6)
+    || clang_feature(cxx_constexpr)             \
+    || gcc_version(4, 6)
 #   undef  HAVE_CONSTEXPR
 #   define HAVE_CONSTEXPR 1
 #else
 #   undef  constexpr
 #   define constexpr
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_decltype)              \
-    || GCC_VERSION(4, 3)                        \
+    || clang_feature(cxx_decltype)              \
+    || gcc_version(4, 3)                        \
     || _MSC_VER >= 1600
 #   undef  HAVE_DECLTYPE
 #   define HAVE_DECLTYPE 1
@@ -74,93 +80,122 @@
 #   undef  constexpr
 #   define constexpr
 #endif
+
 #if defined(HAVE_CXX11)                                         \
-    || GCC_VERSION(4, 3)                                        \
-    || CLANG_FEATURE(cxx_default_function_template_args)
+    || gcc_version(4, 3)                                        \
+    || clang_feature(cxx_default_function_template_args)
 #   undef  HAVE_DEFAULT_FUNC_TEMPLATE_ARG
 #   define HAVE_DEFAULT_FUNC_TEMPLATE_ARG 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || GCC_VERSION(4, 6)                        \
-    || CLANG_FEATURE(cxx_noexcept)
+    || gcc_version(4, 6)                        \
+    || clang_feature(cxx_noexcept)
 #   undef  HAVE_NOEXCEPT
 #   define HAVE_NOEXCEPT 1
 #else
 #   undef  noexcept
 #   define noexcept
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_range_for)             \
-    || GCC_VERSION(4, 6)                        \
+    || clang_feature(cxx_range_for)             \
+    || gcc_version(4, 6)                        \
     || _MSC_VER >= 1700
 #   undef  HAVE_RANGE_FOR
 #   define HAVE_RANGE_FOR 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_rvalue_references)     \
-    || GCC_VERSION(4, 3)                        \
+    || clang_feature(cxx_rvalue_references)     \
+    || gcc_version(4, 3)                        \
     || _MSC_VER >= 1600
 #   undef  HAVE_RVALUE
 #   define HAVE_RVALUE 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_static_assert)         \
-    || GCC_VERSION(4, 3)                        \
+    || clang_feature(cxx_static_assert)         \
+    || gcc_version(4, 3)                        \
     || _MSC_VER >= 1600
 #   undef  HAVE_STATIC_ASSERT
 #   define HAVE_STATIC_ASSERT 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_alias_templates)       \
-    || GCC_VERSION(4, 7)
+    || clang_feature(cxx_alias_templates)       \
+    || gcc_version(4, 7)
 #   undef  HAVE_TEMPLATE_ALIAS
 #   define HAVE_TEMPLATE_ALIAS 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_trailing_return)       \
-    || GCC_VERSION(4, 4)                        \
+    || clang_feature(cxx_trailing_return)       \
+    || gcc_version(4, 4)                        \
     || _MSC_VER >= 1600
 #   undef  HAVE_TRAILING_RETURN
 #   define HAVE_TRAILING_RETURN 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || CLANG_FEATURE(cxx_variadic_templates)    \
-    || GCC_VERSION(4, 3)                        \
+    || clang_feature(cxx_variadic_templates)    \
+    || gcc_version(4, 3)                        \
     || _MSC_VER >= 1700
 #   undef  HAVE_VARIADIC_TEMPLATE
 #   define HAVE_VARIADIC_TEMPLATE 1
 #endif
-#ifndef HAVE_LONG_LONG               // Practically all compilers support this
+
+// Practically all compilers support this, so just assume so
+#ifndef HAVE_LONG_LONG
 #   define HAVE_LONG_LONG 1
 #endif
 
+// ---------------------------------------------------------------------------
+//
 // Library features
+// ================
+
 #if defined(HAVE_CXX11)
 #   undef  HAVE_ADDRESSOF
 #   define HAVE_ADDRESSOF 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
     || defined(__GXX_EXPERIMENTAL_CXX0X__)      \
     || _MSC_VER >= 1700
 #   undef  HAVE_CSTDINT
 #   define HAVE_CSTDINT 1
 #endif
+
 #if defined(HAVE_CXX11)                         \
-    || GCC_VERSION(4, 2)                        \
+    || gcc_version(4, 2)                        \
     || _MSC_VER >= 1500
 #   undef  HAVE_TYPE_TRAITS
 #   define HAVE_TYPE_TRAITS 1
 #endif
-#undef CLANG_FEATURE
-#undef GCC_VERSION
 
-#ifdef HAVE_TYPE_TRAITS
-#   include <type_traits>
+// ---------------------------------------------------------------------------
+
+// Remove the local macros
+#undef clang_feature
+#undef gcc_version
+
+// For documentation purposes
+#ifdef DOC_ONLY
+#define HAVE_RVALUE
+#define HAVE_UINT32
+#define HAVE_UINT64
 #endif
 
+// ---------------------------------------------------------------------------
+//
+// Integer types
+// =============
+//
 // Determine some commonly used integer types.  Prefer <cstdint> or <stdint.h>
 // if available; otherwise, figure it out the hard way.
-#ifdef __GNUC__
+//
+#if defined(__GNUC__) || defined(__clang__)
 #   define HAVE_STDINT_H
 #endif
 #ifdef HAVE_CSTDINT
@@ -202,55 +237,9 @@
 #   endif
 #endif
 
-// Static assertion macro; in some cases it may be necessary to protect the
-// expression with parentheses if the preprocessor interprets it incorrectly
-#if !defined(HAVE_STATIC_ASSERT) && !defined(static_assert)
-#   define FZ_STATIC_ASSERT_MSG(line) FZ_STATIC_ASSERT_MSG2(line)
-#   define FZ_STATIC_ASSERT_MSG2(line) static_assertion_failed_at_line_ ## line
-#   define static_assert(expression, message)                           \
-        enum { FZ_STATIC_ASSERT_MSG(__LINE__) = 1 / (int) (expression) }
-#endif
-
-// For documentation purposes
-#ifdef DOC_ONLY
-#define HAVE_RVALUE
-#define HAVE_UINT32
-#define HAVE_UINT64
-#endif
-
-/// Namespace `fz`.
 namespace fz {
-namespace _priv { template<class T, class = void> struct get_iterator; }
 
-/// @addtogroup FzUtility Utilities
-///
-/// Miscellaneous utility functions.
-///
-/// These are provided as an extension to the C++11 compatibility features and
-/// are not part of the C++11 standard library.
-///
-/// @{
-
-/// Obtains a type related to `T` with the same const-volatile qualifiers as
-/// `Target`.
-template<class T, class Target>
-struct match_cv { typedef T type; };
-template<class T, class Target>
-struct match_cv<T, const Target> { typedef const T type; };
-template<class T, class Target>
-struct match_cv<T, volatile Target> { typedef volatile T type; };
-template<class T, class Target>
-struct match_cv<T, const volatile Target> { typedef const volatile T type; };
-
-/// Deduces the iterator type of a container.
-template<class T>
-struct get_iterator { typedef typename _priv::get_iterator<T>::type type; };
-
-/// @}
-
-/// @addtogroup FzCxx11 C++11
-///
-/// Implementation of various features from C++11 for compatibility purposes.
+/// @addtogroup FzCxx11
 ///
 /// @{
 
@@ -267,6 +256,65 @@ typedef HAVE_UINT32 uint32_t;
 typedef HAVE_UINT64 uint64_t;
 #endif
 
+/// @}
+
+}
+
+// ---------------------------------------------------------------------------
+//
+// Static assertion macro
+// ======================
+//
+// Note that in some cases it may be necessary to protect the expression with
+// parentheses if the preprocessor interprets it incorrectly.
+//
+#if !defined(HAVE_STATIC_ASSERT) && !defined(static_assert)
+#   define FZ_STATIC_ASSERT_MSG(line) FZ_STATIC_ASSERT_MSG2(line)
+#   define FZ_STATIC_ASSERT_MSG2(line) static_assertion_failed_at_line_ ## line
+#   define static_assert(expression, message)                           \
+        enum { FZ_STATIC_ASSERT_MSG(__LINE__) = 1 / (int) (expression) }
+#endif
+
+// ---------------------------------------------------------------------------
+//
+// Type traits
+// ===========
+
+#ifdef HAVE_TYPE_TRAITS
+#   include <type_traits>
+#endif
+
+/// Namespace `fz`.
+namespace fz {
+
+/// @addtogroup FzUtility Utilities
+///
+/// Miscellaneous utility functions.
+///
+/// These are provided as an extension to the C++11 compatibility features and
+/// are not part of the C++11 standard library.
+///
+/// @{
+
+/// Obtains a type related to `T` with the same const-volatile qualifiers as
+/// `Target`.
+template<class T, class Target>
+struct match_cv { typedef T type; };
+template<class T, class U>
+struct match_cv<T, const U> { typedef const T type; };
+template<class T, class U>
+struct match_cv<T, volatile U> { typedef volatile T type; };
+template<class T, class U>
+struct match_cv<T, const volatile U> { typedef const volatile T type; };
+
+/// @}
+
+/// @addtogroup FzCxx11 C++11
+///
+/// Implementation of various features from C++11 for compatibility purposes.
+///
+/// @{
+
 #ifdef HAVE_TYPE_TRAITS
 using std::add_const;
 using std::add_cv;
@@ -280,15 +328,18 @@ using std::enable_if;
 using std::extent;
 using std::false_type;
 using std::integral_constant;
+using std::is_abstract;
 using std::is_array;
 using std::is_base_of;
 using std::is_const;
+using std::is_convertible;
 using std::is_function;
 using std::is_lvalue_reference;
 using std::is_pointer;
 using std::is_reference;
 using std::is_rvalue_reference;
 using std::is_same;
+using std::is_void;
 using std::is_volatile;
 using std::make_signed;
 using std::rank;
@@ -333,6 +384,46 @@ template<class T> struct is_const<const T> : true_type {};
 template<class T> struct is_volatile : false_type {};
 template<class T> struct is_volatile<volatile T> : true_type {};
 
+/// Adds the `const` qualifier to the type.
+template<class T> struct add_const { typedef const T type; };
+
+/// Adds the `volatile` qualifier to the type.
+template<class T> struct add_volatile { typedef volatile T type; };
+
+/// Adds both the `const` and `volatile` qualifiers to the type.
+template<class T> struct add_cv { typedef const volatile T type; };
+
+/// Removes the `const` qualifier from the type.
+template<class T> struct remove_const { typedef T type; };
+template<class T> struct remove_const<const T> { typedef T type; };
+
+/// Removes the `volatile` qualifier from the type.
+template<class T> struct remove_volatile { typedef T type; };
+template<class T> struct remove_volatile<volatile T> { typedef T type; };
+
+/// Removes both the `const` and `volatile` qualifiers from the type.
+template<class T>
+struct remove_cv {
+    typedef typename remove_volatile<
+        typename remove_const<T>::type
+    >::type type;
+};
+
+/// Returns whether the types are the same.
+template<class T, class U> struct is_same : false_type {};
+template<class T> struct is_same<T, T> : true_type {};
+
+/// Returns whether the type is a void type.
+template<class T>
+struct is_void
+    : integral_constant<
+        bool,
+        is_same<
+            void,
+            typename remove_cv<T>::type
+        >::value
+    > {};
+
 /// Returns whether the type is an lvalue or rvalue reference.
 template<class T> struct is_lvalue_reference : false_type {};
 template<class T> struct is_lvalue_reference<T&> : true_type {};
@@ -350,56 +441,33 @@ template<class T> struct is_reference<T&> : true_type {};
 template<class T> struct is_reference<T&&> : true_type {};
 #endif
 
-/// Adds the `const` qualifier to the type.
-template<class T> struct add_const { typedef const T type; };
-
-/// Adds the `volatile` qualifier to the type.
-template<class T> struct add_volatile { typedef volatile T type; };
-
-/// Adds both the `const` and `volatile` qualifiers to the type.
-template<class T> struct add_cv { typedef const volatile T type; };
-
 namespace _priv {
-template<class T, bool = std::is_void<T>::value>
+template<class T, bool = is_void<T>::value>
 struct add_lvalue_reference { typedef T& type; };
 template<class T>
 struct add_lvalue_reference<T, true> { typedef T type; };
 }
-
 /// Converts the type into an lvalue reference.
 template<class T>
 struct add_lvalue_reference {
     typedef typename _priv::add_lvalue_reference<T>::type type;
 };
 
-#ifdef HAVE_RVALUE
 namespace _priv {
-template<class T, bool = std::is_void<T>::value>
-struct add_rvalue_reference { typedef T&& type; };
+template<class T, bool = is_void<T>::value>
+struct add_rvalue_reference { typedef T type; };
+#ifdef HAVE_RVALUE
 template<class T>
-struct add_rvalue_reference<T, true> { typedef T type; };
-}
+struct add_rvalue_reference<T, false> { typedef T&& type; };
 #endif
-/// Converts the type into an rvalue reference provided that `T` is not an
-/// lvalue reference.
+}
+/// Converts the type into an rvalue reference, unless `T` is an lvalue
+/// reference, in which case the type is returned unchanged.  If rvalue
+/// references are not supported, the type is returned unchanged.
 template<class T>
 struct add_rvalue_reference {
     typedef typename _priv::add_rvalue_reference<T>::type type;
 };
-
-/// Removes the `const` qualifier from the type.
-template<class T> struct remove_const { typedef T type; };
-template<class T> struct remove_const<const T> { typedef T type; };
-
-/// Removes the `volatile` qualifier from the type.
-template<class T> struct remove_volatile { typedef T type; };
-template<class T> struct remove_volatile<volatile T> { typedef T type; };
-
-/// Removes both the `const and `volatile` qualifiers from the type.
-template<class T> struct remove_cv { typedef T type; };
-template<class T> struct remove_cv<const T> { typedef T type; };
-template<class T> struct remove_cv<volatile T> { typedef T type; };
-template<class T> struct remove_cv<const volatile T> { typedef T type; };
 
 /// Converts to a non-reference type.
 template<class T> struct remove_reference { typedef T type; };
@@ -408,55 +476,163 @@ template<class T> struct remove_reference<T&> { typedef T type; };
 template<class T> struct remove_reference<T&&> { typedef T type; };
 #endif
 
-namespace _priv {
-template<class T> struct make_signed {};
-template<> struct make_signed<unsigned char> { typedef signed char type; };
-template<> struct make_signed<unsigned short> { typedef short type; };
-template<> struct make_signed<unsigned> { typedef int type; };
-template<> struct make_signed<unsigned long> { typedef long type; };
-#ifdef HAVE_LONG_LONG
-template<> struct make_signed<unsigned long long> { typedef long long type; };
-#endif
-}
-/// Converts an integral type to a signed type (currently only works on the
-/// fundamental types).
-template<class T> struct make_signed {
-    typedef typename match_cv<
-        typename _priv::make_signed<
-            typename remove_cv<T>::type>::type, T>::type type;
-};
-
-/// Contains a `type` member equal to `T` if `Condition` is `true`.
-template<bool Condition, class T = void> struct enable_if {};
-template<class T> struct enable_if<true, T> { typedef T type; };
-
 /// Returns one of the types based on a boolean condition.
 template<bool Condition, class TrueT, class FalseT>
 struct conditional { typedef FalseT type; };
 template<class TrueT, class FalseT>
 struct conditional<true, TrueT, FalseT> { typedef TrueT type; };
 
-/// Returns whether the types are the same.
-template<class T, class U> struct is_same : false_type {};
-template<class T> struct is_same<T, T> : true_type {};
+/// Contains a `type` member equal to `T` if `Condition` is `true`.
+template<bool Condition, class T = void> struct enable_if {};
+template<class T> struct enable_if<true, T> { typedef T type; };
 
 namespace _priv {
-typedef char y[1];
-typedef char n[2];
+template<class T> struct make_signed {};
+template<> struct make_signed<unsigned char>      { typedef signed char type; };
+template<> struct make_signed<unsigned short>     { typedef short type; };
+template<> struct make_signed<unsigned>           { typedef int type; };
+template<> struct make_signed<unsigned long>      { typedef long type; };
+#ifdef HAVE_LONG_LONG
+template<> struct make_signed<unsigned long long> { typedef long long type; };
+#endif
+}
+/// Converts an integral type to a signed type (only works on fundamental
+/// types, excluding `char`).
+template<class T> struct make_signed {
+    typedef typename match_cv<
+        typename _priv::make_signed<
+            typename remove_cv<T>::type
+        >::type,
+        T
+    >::type type;
+};
+
+namespace _priv {
+template<class T> struct make_unsigned {};
+template<> struct make_unsigned<signed char> { typedef unsigned char type; };
+template<> struct make_unsigned<short>     { typedef unsigned short type; };
+template<> struct make_unsigned<int>       { typedef unsigned type; };
+template<> struct make_unsigned<long>      { typedef unsigned long type; };
+#ifdef HAVE_LONG_LONG
+template<> struct make_unsigned<long long> { typedef unsigned long long type; };
+#endif
+}
+/// Converts an integral type to a unsigned type (only works on fundamental
+/// types, excluding `char`).
+template<class T> struct make_unsigned {
+    typedef typename match_cv<
+        typename _priv::make_unsigned<
+            typename remove_cv<T>::type
+        >::type,
+        T
+    >::type type;
+};
+
+namespace _priv {
+template<class T> struct is_integral       : false_type {};
+template<> struct is_integral<wchar_t>     : true_type {};
+template<> struct is_integral<bool>        : true_type {};
+template<> struct is_integral<char>        : true_type {};
+template<> struct is_integral<signed char> : true_type {};
+template<> struct is_integral<short>       : true_type {};
+template<> struct is_integral<int>         : true_type {};
+template<> struct is_integral<long>        : true_type {};
+#ifdef HAVE_LONG_LONG
+template<> struct is_integral<long long>   : true_type {};
+#endif
+template<class T, class = void> struct is_integral2 : is_integral<T> {};
+template<class T> struct is_integral2<T, typename conditional<
+        true, void, typename make_signed<T>::type>::type>
+    :   is_integral<typename make_signed<T>::type> {};
+}
+/// Returns whether the type is an integral type (only works on fundamental
+/// types).
+template<class T> struct is_integral
+    : _priv::is_integral2<typename remove_cv<T>::type> {};
+
+namespace _priv {
+template<class T> struct is_floating_point       : false_type {};
+template<> struct is_floating_point<float>       : true_type {};
+template<> struct is_floating_point<double>      : true_type {};
+template<> struct is_floating_point<long double> : true_type {};
+}
+/// Returns whether the type is a floating-point type (only works on
+/// fundamental types).
+template<class T> struct is_floating_point
+    : _priv::is_floating_point<typename remove_cv<T>::type> {};
+
+/// Returns whether the type is an integral or floating-point type.
+template<class T>
+struct is_arithmetic
+    : integral_constant<bool, is_integral<T>::value ||
+                              is_floating_point<T>::value> {};
+
+namespace _priv {
 template<class Base, class T> struct is_base_of {
     struct conv { operator Base*() const; operator T*(); };
     template<class Int>
-    static y& check(T*, Int);
-    static n& check(Base*, int);
-    static const bool value = sizeof(check(conv(), 0)) == sizeof(y);
+    static char (&check(T*, Int));
+    static char (&check(Base*, int))[2];
+    static const bool value = sizeof(check(conv(), 0)) == 1;
 };
 template<class T> struct is_base_of<T, T> { static const bool value = true; };
 }
-
 /// Checks if a type is derived from another type.
 template<class Base, class Derived>
 struct is_base_of
     : integral_constant<bool, _priv::is_base_of<Base, Derived>::value> {};
+
+namespace _priv {
+template<class T>
+struct is_abstract {
+    template<class U>
+    static char (&check(...));
+    template<class U>
+    static char (&check(U (*)[1]))[2];
+    static_assert(sizeof(T), "T must be a complete type.");
+    static const unsigned value = sizeof(check<T>(0)) == 1;
+};
+}
+/// Checks if a type is an abstract type.
+template<class T>
+struct is_abstract
+    : integral_constant<bool, _priv::is_abstract<T>::value> {};
+
+namespace _priv {
+template<class From, class To, class = void>
+struct is_convertible {
+    struct any {
+        template<class T> any(const volatile T&);
+        template<class T> any(T&);
+    };
+    static char (&check(...))[2];
+    static char (&check(To, int))[1];
+#ifdef HAVE_RVALUE
+    static From&& from();
+#else
+    static From from();
+#endif
+    static const bool value = sizeof(check(from(), 0)) == 1;
+};
+template<class From, class To>
+struct is_convertible<From, To,
+    typename enable_if<
+        is_void<typename remove_cv<From>::type>::value ||
+        is_void<typename remove_cv<To>::type>::value
+    >::type> : is_same<typename remove_cv<From>::type,
+                       typename remove_cv<To>::type> {};
+// Not strictly required, but this is used to suppress warnings about
+// arithmetic type conversions in MSVC.
+template<class From, class To>
+struct is_convertible<From, To,
+    typename enable_if<
+        is_arithmetic<From>::value ||
+        is_arithmetic<To>::value
+    >::type> : true_type {};
+}
+/// Checks if the type `From` can be converted to `To`.
+template<class From, class To>
+struct is_convertible : _priv::is_convertible<From, To> {};
 
 /// Returns the number of dimensions in the array type.
 template<class T>
@@ -485,14 +661,6 @@ struct extent<T[N], 0> : integral_constant<std::size_t, N> {};
 template<class T, std::size_t I, unsigned N>
 struct extent<T[I], N>
     : integral_constant<std::size_t, extent<T, N - 1>::value> {};
-
-/// Removes the first dimension of an array type.
-template<class T>
-struct remove_extent { typedef T type; };
-template<class T>
-struct remove_extent<T[]> { typedef T type; };
-template<class T, std::size_t N>
-struct remove_extent<T[N]> { typedef T type; };
 
 /// Removes the first dimension of an array type.
 template<class T>
@@ -577,64 +745,10 @@ struct decay { typedef typename _priv::decay<T>::type type; };
 
 #endif // HAVE_TYPE_TRAITS
 
-#ifdef HAVE_BEGIN_END
-using std::begin;
-using std::end;
-namespace _priv {
-template<class T, class>
-struct get_iterator { typedef decltype(begin(std::declval<T>())) type; };
-}
-#else
-namespace _priv {
-
-template<class T, class>
-struct get_iterator { typedef typename T::iterator type; };
-template<class T, class X>
-struct get_iterator<T&, X> { typedef typename T::iterator type; };
-template<class T, class X>
-struct get_iterator<const T&, X> { typedef typename T::const_iterator type; };
-template<class T, std::size_t N, class X>
-struct get_iterator<T (&)[N], X> { typedef T* type; };
-template<class T, std::size_t N, class X>
-struct get_iterator<const T (&)[N], X> { typedef const T* type; };
-
-// Let `std::pair<Iterator, Iterator>` be treated as an iterable container.
-template<class Iterator>
-struct get_iterator<std::pair<Iterator, Iterator>,
-    typename conditional<true, void,
-        typename std::iterator_traits<Iterator>::iterator_category>::type> {
-    typedef Iterator type;
-};
-template<class Iterator>
-struct get_iterator<std::pair<Iterator, Iterator>&,
-    typename conditional<true, void,
-        typename std::iterator_traits<Iterator>::iterator_category>::type> {
-    typedef Iterator type;
-};
-template<class Iterator>
-struct get_iterator<const std::pair<Iterator, Iterator>&,
-    typename conditional<true, void,
-        typename std::iterator_traits<Iterator>::iterator_category>::type> {
-    typedef Iterator type;
-};
-
-}
-
-template<class C>
-typename get_iterator<const C&>::type begin(const C& c) { return c.begin(); }
-template<class C>
-typename get_iterator<C&>::type begin(C& c) { return c.begin(); }
-template<class T, std::size_t N>
-typename get_iterator<T (&)[N]>::type begin(T (&array)[N]) { return array; }
-
-template<class C>
-typename get_iterator<const C&>::type end(const C& c) { return c.end(); }
-template<class C>
-typename get_iterator<C&>::type end(C& c) { return c.end(); }
-template<class T, std::size_t N>
-typename get_iterator<T (&)[N]>::type end(T (&array)[N]) { return array + N; }
-
-#endif // HAVE_BEGIN_END
+// ---------------------------------------------------------------------------
+//
+// Utility functions
+// =================
 
 #ifdef HAVE_ADDRESSOF
 using std::addressof;
@@ -679,23 +793,85 @@ constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
 #endif // HAVE_RVALUE_HELPERS
 #endif // HAVE_RVALUE
 
+// ---------------------------------------------------------------------------
+//
+// Iterator helper functions
+// =========================
+
+#ifdef HAVE_BEGIN_END
+using std::begin;
+using std::end;
+#else
+
+/// Returns an iterator to the beginning of a container.
+template<class C>
+typename C::iterator       begin(C& c)          { return c.begin(); }
+
+/// Returns an iterator to the beginning of a container.
+template<class C>
+typename C::const_iterator begin(const C& c)    { return c.begin(); }
+
+/// Returns an iterator to the beginning of an array.
+template<class T, std::size_t N>
+T*                         begin(T (&array)[N]) { return array; }
+
+/// Returns an iterator to the end of a container.
+template<class C>
+typename C::iterator       end(C& c)            { return c.end(); }
+
+/// Returns an iterator to the end of a container.
+template<class C>
+typename C::const_iterator end(const C& c)      { return c.end(); }
+
+/// Returns an iterator to the end of an array.
+template<class T, std::size_t N>
+T*                         end(T (&array)[N])   { return array + N; }
+
+#endif // HAVE_BEGIN_END
+
 /// @}
+//
+// ---------------------------------------------------------------------------
+//
+/// @addtogroup FzUtility
+//
+/// @{
 
 namespace _priv {
-template<class Iterator,
-         class = typename std::iterator_traits<Iterator>::iterator_category>
-struct ensure_iterator {
-    typedef Iterator type;
+template<class It,
+         class = typename std::iterator_traits<It>::iterator_category>
+struct ensure_iterator { typedef It type; };
+#if defined(HAVE_DECLTYPE) && defined(HAVE_RVALUE)
+template<class T, class = void>
+struct get_iterator {
+    typedef decltype(begin(declval<T>())) type;
 };
+#else
+template<class T, class = void>
+struct get_iterator {
+    typedef typename conditional<
+        is_array<T>::value,
+        typename remove_extent<T>::type,
+        typename conditional<
+            is_const<T>::value,
+            typename T::const_iterator,
+            typename T::iterator
+        >::type
+    >::type type;
+};
+template<class It>
+struct get_iterator<std::pair<It, It>, typename ensure_iterator<It>::type> {
+    typedef It type;
+};
+#endif
 }
+/// Obtains the default iterator type of a container or array.
+template<class T>
+struct get_iterator { typedef typename _priv::get_iterator<T>::type type; };
 
-}
+} // namespace fz
 
 namespace std {
-
-/// @addtogroup FzUtility
-///
-/// @{
 
 /// Returns the first item in the iterator pair.
 template<class Iterator>
@@ -709,5 +885,5 @@ end(const std::pair<Iterator, Iterator>& p) { return p.second; }
 
 /// @}
 
-}
+} // namespace std
 #endif
