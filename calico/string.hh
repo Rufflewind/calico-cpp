@@ -6,17 +6,19 @@
 #include "cxx11.hh"
 namespace fz {
 
+/// @addtogroup FzString Strings
+///
+/// Functions and types related to string-manipulation.
+///
+/// @{
+
 /// Constructs a string representation of an object using the stream insertion
 /// operator (`<<`).
 template<class T>
-inline std::string to_string(const T& x) {
-    std::ostringstream stream;
-    stream << x;
-    return stream.str();
-}
+inline std::string to_string(const T& x); // Defined in cxx11.hh
 
-/// Returns a copy of the string.
-inline std::string to_string(const std::string& s) { return s; }
+/// Returns the same string.
+inline const std::string& to_string(const std::string& s) { return s; }
 
 /// Converts a null-terminated string to an `std::string`.
 inline std::string to_string(const char* s) { return s; }
@@ -174,6 +176,8 @@ template<class T>
 inline null_terminated_iterator<T> null_terminated_end(T* ptr) {
     return null_terminated_iterator<T>(ptr, true);
 }
+
+/// @}
 
 }
 #endif

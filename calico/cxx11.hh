@@ -3,35 +3,51 @@
 #include <climits>
 #include <cstddef>
 #include <iterator>
+#include <sstream>
 #include <utility>
+/// @file
+///
+/// This header provides some basic features from C++11 and a few rudimentary
+/// feature-testing macros.
+///
+/// The feature tests (or more accurately, *version* tests) in this header are
+/// incomplete and do not support every compiler.  Full feature testing is
+/// best provided by actual build tools.
 
-// This header provides some basic features from C++11 and a few rudimentary
-// feature-testing macros.  It is incomplete and does not support every
-// compiler.  Full feature testing is best provided by actual build tools.
-//
-// Some useful information can be found here:
-//
-//     http://wiki.apache.org/stdcxx/C++0xCompilerSupport
-//     http://clang.llvm.org/docs/LanguageExtensions.html
-//     http://gcc.gnu.org/projects/cxx0x.html
-//
-// For MSVC, the version macro evaluates to:
-//
-//     _MSC_VER = 1700 for Visual Studio 2012 / 11.0
-//     _MSC_VER = 1600 for Visual Studio 2010 / 10.0
-//     _MSC_VER = 1500 for Visual Studio 2008 /  9.0
-//
-// The following set of macros determine the availability of C++11 features in
-// some common compilers (assuming they even have these kinds of things
-// properly documented, which is often not the case).  Note that despite what
-// the standard says, the __cplusplus macro should not be fully trusted as
-// compilers can and will lie about it (e.g. Clang).
-//
-// If the compiler does in fact support *every* feature of C++11 correctly
-// (quite unlikely) then feel free to define the HAVE_CXX11 macro; otherwise,
-// define the individual HAVE_... feature macros instead.
+/// @addtogroup FzCxx11 C++11
+///
+/// Implementation of various features from C++11 for compatibility purposes.
+///
+/// A set of macros is used determine the availability of C++11 features in
+/// some common compilers, assuming they even have these kinds of things
+/// properly documented (which is often not the case).  Note that despite what
+/// the standard says, the `__cplusplus` macro is not be trusted as compilers
+/// can and will lie about it (e.g. Clang).
+///
+/// If the compiler does in fact support *every* feature of C++11 correctly
+/// (quite unlikely) then feel free to define the `HAVE_CXX11` macro;
+/// otherwise, use the individual `HAVE_`... feature macros instead.
+///
+/// Some useful information can be found here:
+///
+/// - http://wiki.apache.org/stdcxx/C++0xCompilerSupport
+/// - http://clang.llvm.org/docs/LanguageExtensions.html
+/// - http://gcc.gnu.org/projects/cxx0x.html
+///
+/// For MSVC, the values of the version macro are:
+///
+///     _MSC_VER = 1700 for Visual Studio 2012 / 11.0
+///     _MSC_VER = 1600 for Visual Studio 2010 / 10.0
+///     _MSC_VER = 1500 for Visual Studio 2008 /  9.0
+///     _MSC_VER < 1500 for ancient, unsupported versions
+///
+/// For unsupported compilers, the preferable approach is to add specific
+/// feature tests into the build system (e.g. Autoconf, CMake) and then define
+/// the appropriate `HAVE_`... macros.
+///
+/// @{
 
-// Global toggle
+// Defined if *all* C++11 features are supported.
 #if __cplusplus >= 201103L \
     && !defined(__clang__) // Clang does not fully support C++11
 #   undef  HAVE_CXX11
@@ -45,13 +61,16 @@
 #define clang_feature(feature) (defined(__clang__) && __has_feature(feature))
 #define gcc_version(major, minor)                                       \
     (defined(__GXX_EXPERIMENTAL_CXX0X__)                                \
-     && ( __GNUC__ == major && __GNUC_MINOR__ >= minor || __GNUC__ > major))
+     && (__GNUC__ == major && __GNUC_MINOR__ >= minor || __GNUC__ > major))
+#define glib_date(date)                                                 \
+    (defined(__GXX_EXPERIMENTAL_CXX0X__) && __GLIBCXX__ >= date)
 
 // ---------------------------------------------------------------------------
 //
 // Language features
 // =================
 
+// Defined if type inference (`auto`) is available.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_auto_type)             \
     || gcc_version(4, 4)                        \
@@ -60,6 +79,7 @@
 #   define HAVE_AUTO 1
 #endif
 
+// Defined if constant expressions (`constexpr`) are supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_constexpr)             \
     || gcc_version(4, 6)
@@ -70,6 +90,7 @@
 #   define constexpr
 #endif
 
+// Defined if type inspection (`decltype`) is supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_decltype)              \
     || gcc_version(4, 3)                        \
@@ -81,6 +102,7 @@
 #   define constexpr
 #endif
 
+// Defined if function templates can have default arguments.
 #if defined(HAVE_CXX11)                                         \
     || gcc_version(4, 3)                                        \
     || clang_feature(cxx_default_function_template_args)
@@ -88,6 +110,8 @@
 #   define HAVE_DEFAULT_FUNC_TEMPLATE_ARG 1
 #endif
 
+// Defined if compile-time exception specifications (`noexcept`) are
+// supported.
 #if defined(HAVE_CXX11)                         \
     || gcc_version(4, 6)                        \
     || clang_feature(cxx_noexcept)
@@ -98,6 +122,7 @@
 #   define noexcept
 #endif
 
+// Defined if range-based `for` loops are supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_range_for)             \
     || gcc_version(4, 6)                        \
@@ -106,6 +131,7 @@
 #   define HAVE_RANGE_FOR 1
 #endif
 
+// Defined if rvalue references are supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_rvalue_references)     \
     || gcc_version(4, 3)                        \
@@ -114,6 +140,7 @@
 #   define HAVE_RVALUE 1
 #endif
 
+// Defined if static assertions (`static_assert`) are supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_static_assert)         \
     || gcc_version(4, 3)                        \
@@ -122,6 +149,7 @@
 #   define HAVE_STATIC_ASSERT 1
 #endif
 
+// Defined if template aliases are supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_alias_templates)       \
     || gcc_version(4, 7)
@@ -129,6 +157,7 @@
 #   define HAVE_TEMPLATE_ALIAS 1
 #endif
 
+/// Defined if the trailing return type syntax is supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_trailing_return)       \
     || gcc_version(4, 4)                        \
@@ -137,6 +166,7 @@
 #   define HAVE_TRAILING_RETURN 1
 #endif
 
+// Defined if variadic templates are supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_variadic_templates)    \
     || gcc_version(4, 3)                        \
@@ -145,8 +175,10 @@
 #   define HAVE_VARIADIC_TEMPLATE 1
 #endif
 
-// Practically all compilers support this, so just assume so
-#ifndef HAVE_LONG_LONG
+// Defined if the `long long` integer type is available (since it's almost
+// always the case, this is defined by default).  To suppress this definition,
+// define `NO_LONG_LONG`.
+#if !defined(HAVE_LONG_LONG) and !defined(NO_LONG_LONG)
 #   define HAVE_LONG_LONG 1
 #endif
 
@@ -155,11 +187,13 @@
 // Library features
 // ================
 
+// Defined if `std::addressof` is available.
 #if defined(HAVE_CXX11)
 #   undef  HAVE_ADDRESSOF
 #   define HAVE_ADDRESSOF 1
 #endif
 
+// Defined if the `<cstdint>` library is available.
 #if defined(HAVE_CXX11)                         \
     || defined(__GXX_EXPERIMENTAL_CXX0X__)      \
     || _MSC_VER >= 1700
@@ -167,6 +201,13 @@
 #   define HAVE_CSTDINT 1
 #endif
 
+// Defined if `to_string` is available.
+#if defined(HAVE_CXX11)                         \
+    || glib_date(20090421)
+#   define HAVE_STRING_HELPERS
+#endif
+
+// Defined if the `<type_traits>` library is available.
 #if defined(HAVE_CXX11)                         \
     || gcc_version(4, 2)                        \
     || _MSC_VER >= 1500
@@ -174,15 +215,17 @@
 #   define HAVE_TYPE_TRAITS 1
 #endif
 
+/// @}
+
 // ---------------------------------------------------------------------------
 
 // Remove the local macros
 #undef clang_feature
 #undef gcc_version
+#undef glib_date
 
 // For documentation purposes
 #ifdef DOC_ONLY
-#define HAVE_RVALUE
 #define HAVE_UINT32
 #define HAVE_UINT64
 #endif
@@ -240,7 +283,7 @@
 namespace fz {
 
 /// @addtogroup FzCxx11
-///
+//
 /// @{
 
 /// Fastest 16-bit unsigned integer type.
@@ -264,13 +307,19 @@ typedef HAVE_UINT64 uint64_t;
 //
 // Static assertion macro
 // ======================
-//
-// Note that in some cases it may be necessary to protect the expression with
-// parentheses if the preprocessor interprets it incorrectly.
-//
+
 #if !defined(HAVE_STATIC_ASSERT) && !defined(static_assert)
 #   define FZ_STATIC_ASSERT_MSG(line) FZ_STATIC_ASSERT_MSG2(line)
 #   define FZ_STATIC_ASSERT_MSG2(line) static_assertion_failed_at_line_ ## line
+//
+/// @def static_assert(expression, message)
+///
+/// Performs a static assertion of the expression.
+///
+/// Note: when template arguments are present, it may be necessary to protect
+/// the `expression` with parentheses if the preprocessor interprets it
+/// incorrectly (since it does not treat angle brackets as delimiters).
+///
 #   define static_assert(expression, message)                           \
         enum { FZ_STATIC_ASSERT_MSG(__LINE__) = 1 / (int) (expression) }
 #endif
@@ -308,12 +357,6 @@ template<class T, class U>
 struct match_cv<T, const volatile U> { typedef const volatile T type; };
 
 /// @}
-
-/// @addtogroup FzCxx11 C++11
-///
-/// Implementation of various features from C++11 for compatibility purposes.
-///
-/// @{
 
 #ifdef HAVE_TYPE_TRAITS
 using std::add_const;
@@ -353,6 +396,10 @@ using std::remove_volatile;
 using std::true_type;
 #else
 
+/// @addtogroup FzCxx11
+///
+/// @{
+
 /// Represents a compile-time constant of integral type.
 template<class T, T Value>
 struct integral_constant {
@@ -368,6 +415,7 @@ struct integral_constant {
 
     /// Converts the integral constant type into its constant value.
     constexpr operator value_type() const { return value; }
+
 };
 
 /// An alias to `integral_constant` with a `value` of `true`.
@@ -755,13 +803,12 @@ using std::addressof;
 #else
 /// Obtains the address of an object even if `operator&` is overloaded.
 template<class T>
-T* addressof(T& x) {
+inline T* addressof(T& x) {
     return reinterpret_cast<T*>(
         &const_cast<char&>(reinterpret_cast<const volatile char&>(x)));
 }
 #endif // HAVE_ADDRESSOF
 
-#ifdef HAVE_RVALUE
 #ifdef HAVE_RVALUE_HELPERS
 using std::declval;
 using std::forward;
@@ -772,6 +819,7 @@ using std::move;
 template<class T>
 typename add_rvalue_reference<T>::type declval() noexcept;
 
+#if defined(HAVE_RVALUE) || defined(DOC_ONLY)
 /// Perfectly forwards the given argument.
 template<class T>
 inline constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept {
@@ -786,12 +834,39 @@ inline constexpr T&& forward(typename remove_reference<T>::type& t) noexcept {
 
 /// Converts an rvalue reference into an xvalue.
 template<class T>
-constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
+inline constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
     static_cast<typename remove_reference<T>::type&&>(t);
 }
-
-#endif // HAVE_RVALUE_HELPERS
+#else // HAVE_RVALUE
+/// Forwards the given argument (fallback version without rvalue support).
+template<class T>
+inline constexpr T& forward(T& t) noexcept {
+    return t;
+}
+template<class T>
+inline constexpr const T& forward(const T& t) noexcept {
+    return t;
+}
 #endif // HAVE_RVALUE
+#endif // HAVE_RVALUE_HELPERS
+
+// ---------------------------------------------------------------------------
+//
+// String helper functions
+// =======================
+
+#ifdef HAVE_STRING_HELPERS
+using std::to_string
+#endif
+
+/// Constructs a string representation of an object using the stream insertion
+/// operator (`<<`).
+template<class T>
+inline std::string to_string(const T& x) {
+    std::ostringstream stream;
+    stream << x;
+    return stream.str();
+}
 
 // ---------------------------------------------------------------------------
 //
@@ -805,37 +880,44 @@ using std::end;
 
 /// Returns an iterator to the beginning of a container.
 template<class C>
-typename C::iterator       begin(C& c)          { return c.begin(); }
+inline typename C::iterator       begin(C& c)          { return c.begin(); }
 
 /// Returns an iterator to the beginning of a container.
 template<class C>
-typename C::const_iterator begin(const C& c)    { return c.begin(); }
+inline typename C::const_iterator begin(const C& c)    { return c.begin(); }
 
 /// Returns an iterator to the beginning of an array.
 template<class T, std::size_t N>
-T*                         begin(T (&array)[N]) { return array; }
+inline T*                         begin(T (&array)[N]) { return array; }
 
 /// Returns an iterator to the end of a container.
 template<class C>
-typename C::iterator       end(C& c)            { return c.end(); }
+inline typename C::iterator       end(C& c)            { return c.end(); }
 
 /// Returns an iterator to the end of a container.
 template<class C>
-typename C::const_iterator end(const C& c)      { return c.end(); }
+inline typename C::const_iterator end(const C& c)      { return c.end(); }
 
 /// Returns an iterator to the end of an array.
 template<class T, std::size_t N>
-T*                         end(T (&array)[N])   { return array + N; }
+inline T*                         end(T (&array)[N])   { return array + N; }
 
 #endif // HAVE_BEGIN_END
 
 /// @}
-//
+
 // ---------------------------------------------------------------------------
 //
+// Miscellaneous
+// =============
+
 /// @addtogroup FzUtility
-//
 /// @{
+
+/// Constructs a string representation of an object using the stream insertion
+/// operator (`<<`).
+template<class T>
+inline std::string to_string(const T& x); // Defined earlier
 
 namespace _priv {
 template<class It,
@@ -869,18 +951,23 @@ struct get_iterator<std::pair<It, It>, typename ensure_iterator<It>::type> {
 template<class T>
 struct get_iterator { typedef typename _priv::get_iterator<T>::type type; };
 
+/// @}
+
 } // namespace fz
 
 namespace std {
 
+/// @addtogroup FzUtility
+/// @{
+
 /// Returns the first item in the iterator pair.
 template<class Iterator>
-typename fz::_priv::ensure_iterator<Iterator>::type
+inline typename fz::_priv::ensure_iterator<Iterator>::type
 begin(const std::pair<Iterator, Iterator>& p) { return p.first; }
 
 /// Returns the second item in the iterator pair.
 template<class Iterator>
-typename fz::_priv::ensure_iterator<Iterator>::type
+inline typename fz::_priv::ensure_iterator<Iterator>::type
 end(const std::pair<Iterator, Iterator>& p) { return p.second; }
 
 /// @}
