@@ -823,7 +823,7 @@ typename add_rvalue_reference<T>::type declval() noexcept;
 /// Perfectly forwards the given argument.
 template<class T>
 inline constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept {
-    static_assert(is_lvalue_reference<T>::value,
+    static_assert(!is_lvalue_reference<T>::value,
                   "template argument T cannot be an lvalue reference");
     return static_cast<T&&>(t);
 }
