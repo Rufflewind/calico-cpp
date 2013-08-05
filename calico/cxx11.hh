@@ -157,7 +157,7 @@
 #   define HAVE_TEMPLATE_ALIAS 1
 #endif
 
-/// Defined if the trailing return type syntax is supported.
+// Defined if the trailing return type syntax is supported.
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_trailing_return)       \
     || gcc_version(4, 4)                        \
@@ -868,42 +868,6 @@ inline std::string to_string(const T& x) {
     return stream.str();
 }
 
-// ---------------------------------------------------------------------------
-//
-// Iterator helper functions
-// =========================
-
-#ifdef HAVE_BEGIN_END
-using std::begin;
-using std::end;
-#else
-
-/// Returns an iterator to the beginning of a container.
-template<class C>
-inline typename C::iterator       begin(C& c)          { return c.begin(); }
-
-/// Returns an iterator to the beginning of a container.
-template<class C>
-inline typename C::const_iterator begin(const C& c)    { return c.begin(); }
-
-/// Returns an iterator to the beginning of an array.
-template<class T, std::size_t N>
-inline T*                         begin(T (&array)[N]) { return array; }
-
-/// Returns an iterator to the end of a container.
-template<class C>
-inline typename C::iterator       end(C& c)            { return c.end(); }
-
-/// Returns an iterator to the end of a container.
-template<class C>
-inline typename C::const_iterator end(const C& c)      { return c.end(); }
-
-/// Returns an iterator to the end of an array.
-template<class T, std::size_t N>
-inline T*                         end(T (&array)[N])   { return array + N; }
-
-#endif // HAVE_BEGIN_END
-
 /// @}
 
 // ---------------------------------------------------------------------------
@@ -930,12 +894,18 @@ struct get_iterator {
 };
 #else
 template<class T, class = void>
+struct has_const_iterator : false_type {};
+template<class T>
+struct has_const_iterator<T,
+    typename conditional<true, void, typename T::const_iterator>::type>
+    : true_type {};
+template<class T, class = void>
 struct get_iterator {
     typedef typename conditional<
         is_array<T>::value,
         typename remove_extent<T>::type,
         typename conditional<
-            is_const<T>::value,
+            is_const<T>::value && has_const_iterator<T>::value,
             typename T::const_iterator,
             typename T::iterator
         >::type
@@ -953,6 +923,64 @@ struct get_iterator { typedef typename _priv::get_iterator<T>::type type; };
 
 /// @}
 
+// ---------------------------------------------------------------------------
+//
+// Iterator helper functions
+// =========================
+
+/// @addtogroup FzCxx11
+///
+/// @{
+
+#ifdef HAVE_BEGIN_END
+using std::begin;
+using std::end;
+#else
+
+/// Returns an iterator to the beginning of a container.
+template<class C>
+inline typename get_iterator<C&>::type
+begin(C& c)          { return c.begin(); }
+
+/// Returns an iterator to the beginning of a container.
+template<class C>
+inline typename get_iterator<const C&>::type
+begin(const C& c)    { return c.begin(); }
+
+/// Returns an iterator to the beginning of an array.
+template<class T, std::size_t N>
+inline typename get_iterator<T (&)[N]>::type
+begin(T (&array)[N]) { return array;     }
+
+/// Returns a const-qualified iterator to the beginning of a container.
+template<class C>
+inline typename get_iterator<const C&>::type
+cbegin(const C& c)   { return begin(c);  }
+
+/// Returns an iterator to the end of a container.
+template<class C>
+inline typename get_iterator<C&>::type
+end(C& c)            { return c.end();   }
+
+/// Returns an iterator to the end of a container.
+template<class C>
+inline typename get_iterator<const C&>::type
+end(const C& c)      { return c.end();   }
+
+/// Returns an iterator to the end of an array.
+template<class T, std::size_t N>
+inline typename get_iterator<T (&)[N]>::type
+end(T (&array)[N])   { return array + N; }
+
+/// Returns a const-qualified iterator to the end of a container.
+template<class C>
+inline typename get_iterator<const C&>::type
+cend(const C& c)     { return end(c);    }
+
+#endif // HAVE_BEGIN_END
+
+/// @}
+
 } // namespace fz
 
 namespace std {
@@ -963,12 +991,12 @@ namespace std {
 /// Returns the first item in the iterator pair.
 template<class Iterator>
 inline typename fz::_priv::ensure_iterator<Iterator>::type
-begin(const std::pair<Iterator, Iterator>& p) { return p.first; }
+begin(const std::pair<Iterator, Iterator>& p) { return p.first;  }
 
 /// Returns the second item in the iterator pair.
 template<class Iterator>
 inline typename fz::_priv::ensure_iterator<Iterator>::type
-end(const std::pair<Iterator, Iterator>& p) { return p.second; }
+end(const std::pair<Iterator, Iterator>& p)   { return p.second; }
 
 /// @}
 
