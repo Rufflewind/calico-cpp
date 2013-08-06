@@ -10,7 +10,7 @@ template<class Ref>
 class proxy_pointer {
     Ref _r;
 public:
-    explicit input_iterator_pointer(Ref& r) _r(r) {}
+    explicit proxy_pointer(Ref& r) : _r(r) {}
     Ref* operator->() const { return addressof(_r); }
     Ref operator*() const { return _r; }
     operator Ref*() const { return addressof(_r); }
@@ -86,6 +86,18 @@ public:
     }
 };
 
+template<class, class>
+class counted_iterator;
+namespace _priv {
+struct counted_iterator_ {
+    // Can't think of a better way to do this
+    template<class, class = void> struct difference_type {};
+    template<class I>             struct difference_type<I,
+        FZ_VALID_TYPE(typename I::iterator_category, void)
+    > { typedef typename std::iterator_traits<I>::difference_type type; };
+    };
+}
+
 /// An iterator adapter that counts the offset as the iterator moves.
 ///
 /// @tparam Iterator  An iterator type to be wrapped.  The adapter supports
@@ -99,7 +111,7 @@ class counted_iterator {
     typedef std::iterator_traits<Iterator> _traits;
 public:
 
-    /// Wrapped iterator type.
+    /// Underlying iterator type.
     typedef Iterator iterator_type;
 
     /// Iterator category.
@@ -118,131 +130,303 @@ public:
     /// Reference type.
     typedef typename std::iterator_traits<iterator_type>::reference reference;
 
-    /// Default initializes a `counted_iterator` with unspecified values.
+    /// Default initializes a `counted_iterator` with an unspecified counter
+    /// value.
     counted_iterator() {}
 
     /// Constructs a `counted_iterator` with an initial count.
     ///
-    /// @param i            The iterator to be wrapped.
+    /// @param iterator     The iterator to be wrapped.
     /// @param init_count   The initial count.
-    counted_iterator(iterator_type i,
-                     difference_type init_count = difference_type())
-        : _i(i), _count(init_count) {}
+    counted_iterator(
+        const iterator_type& iterator,
+        difference_type init_count = difference_type()
+    ) : _i(iterator), _count(init_count) {}
 
-    template<class OtherIterator>
-    counted_iterator(const counted_iterator<OtherIterator>& other)
-        : _i(other._i),
-          _count(other._count) {}
-    template<class OtherIterator>
-    counted_iterator& operator=(const counted_iterator<OtherIterator>& other) {
-        _i = other._i;
-        _count = other._count;
-    }
-
-    iterator_type& base() const {
+    /// Returns the underlying iterator.
+    const iterator_type& base() const {
         return _i;
     }
+
+    /// Returns the underlying iterator.
+    operator iterator_type() const {
+        return _i;
+    }
+
+    /// Returns the current value of the counter.
+    difference_type count() const {
+        return _count;
+    }
+
+    /// Sets the current value of the counter.
+    void set_count(difference_type value) {
+        _count = value;
+    }
+
+    /// Returns the pointed-to object.
     reference operator*() const {
         return *_i;
     }
+
+    /// Allows member access for the pointed-to object.
     pointer operator->() const {
         return &**this;
     }
+
+    /// Post-increments the underlying iterator and the counter.
+    counted_iterator operator++(int) {
+        return counted_iterator(_i++, _count++);
+    }
+
+    /// Pre-increments the underlying iterator and the counter.
     counted_iterator& operator++() {
         ++_i;
         ++_count;
         return *this;
     }
+
+    /// Pre-decrements the underlying iterator and the counter.
     counted_iterator& operator--() {
         --_i;
         --_count;
         return *this;
     }
-    counted_iterator operator++(int) {
-        return counted_iterator(_i++, _count++);
-    }
+
+    /// Post-decrements the underlying iterator and the counter.
     counted_iterator operator--(int) {
         return counted_iterator(_i--, _count--);
     }
-    counted_iterator operator+(difference_type n) const {
-        return counted_iterator(_i + n, _count + n);
-    }
-    counted_iterator operator-(difference_type n) const {
-        return counted_iterator(_i - n, _count - n);
-    }
-    counted_iterator& operator+=(difference_type n) const {
+
+    /// Advances both the underlying iterator and the counter by `n`.
+    template<class N>
+    counted_iterator& operator+=(N n) {
         _i += n;
         _count += n;
         return *this;
     }
-    counted_iterator& operator-=(difference_type n) const {
+
+    /// Advances both the underlying iterator and the counter by `n` in
+    /// reverse.
+    template<class N>
+    counted_iterator& operator-=(N n) {
         _i -= n;
         _count -= n;
         return *this;
     }
-    difference_type count() const {
-        return _count;
-    }
-    void set_count(difference_type value) {
-        _count = value;
-    }
-    template<class OtherIterator>
-    bool operator==(const counted_iterator<OtherIterator>& other) const {
-        return _i == other._i;
-    }
-    template<class OtherIterator>
-    bool operator!=(const counted_iterator<OtherIterator>& other) const {
-        return _i != other._i;
-    }
-    template<class OtherIterator>
-    bool operator<=(const counted_iterator<OtherIterator>& other) const {
-        return _i <= other._i;
-    }
-    template<class OtherIterator>
-    bool operator>=(const counted_iterator<OtherIterator>& other) const {
-        return _i >= other._i;
-    }
-    template<class OtherIterator>
-    bool operator<(const counted_iterator<OtherIterator>& other) const {
-        return _i < other._i;
-    }
-    template<class OtherIterator>
-    bool operator>(const counted_iterator<OtherIterator>& other) const {
-        return _i > other._i;
-    }
-    friend counted_iterator operator+(difference_type n,
-                                      const counted_iterator& i) {
-        return i + n;
-    }
-#ifdef HAVE_TRAILING_RETURN
-    template<class OtherIterator>
-    auto operator-(const counted_iterator<OtherIterator>& i)
-      -> decltype(_i - i._i) {
-        return _i - i._i;
-    }
-#else
-    difference_type operator-(const counted_iterator& i) {
-        return _i - i._i;
-    }
-#endif
+
 private:
-    Iterator _i;
+    iterator_type _i;
     difference_type _count;
 };
 
+// All comparison operators here following the same pattern: 3 overloads with
+// (counted, counted), (counted, J), (I, counted) for every operator.
+// Verbose, but sadly this is as clean as it gets.
+
+/// Compares the underlying iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() == declval<J>(), bool)
+operator==(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() == j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() == declval<J>(), bool)
+operator==(const I& i, const counted_iterator<J, D>& j) {
+    return i == j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() == declval<J>(), bool)
+operator==(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() == j;
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() != declval<J>(), bool)
+operator!=(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() != j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() != declval<J>(), bool)
+operator!=(const I& i, const counted_iterator<J, D>& j) {
+    return i != j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() != declval<J>(), bool)
+operator!=(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() != j;
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() <= declval<J>(), bool)
+operator<=(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() <= j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() <= declval<J>(), bool)
+operator<=(const I& i, const counted_iterator<J, D>& j) {
+    return i <= j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() <= declval<J>(), bool)
+operator<=(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() <= j;
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() >= declval<J>(), bool)
+operator>=(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() >= j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() >= declval<J>(), bool)
+operator>=(const I& i, const counted_iterator<J, D>& j) {
+    return i >= j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() >= declval<J>(), bool)
+operator>=(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() >= j;
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() < declval<J>(), bool)
+operator<(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() < j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() < declval<J>(), bool)
+operator<(const I& i, const counted_iterator<J, D>& j) {
+    return i < j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() < declval<J>(), bool)
+operator<(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() < j;
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() > declval<J>(), bool)
+operator>(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() > j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() > declval<J>(), bool)
+operator>(const I& i, const counted_iterator<J, D>& j) {
+    return i > j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(declval<I>() > declval<J>(), bool)
+operator>(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() > j;
+}
+
+// ... and we're finally done with all the comparison operators.
+
+/// Returns an iterator in which the underlying iterator and the counter
+/// are both advanced by `n`.
+template<class I, class D, class N> inline
+FZ_DECLTYPE(
+    (counted_iterator<I, D>(
+        declval<I>() + declval<N>(),
+        declval<D>() + declval<N>()
+    )),
+    (counted_iterator<I, D>)
+) operator+(const counted_iterator<I, D>& i, N n) {
+    return counted_iterator<I, D>(i.base() + n, i.count()+ n);
+}
+
+/// Returns an iterator advanced by the given number of steps.
+template<class I, class D, class N> inline
+FZ_DECLTYPE(declval<I>() + declval<N>(), (counted_iterator<I, D>))
+operator+(N n, const counted_iterator<I, D>& i) {
+    return i + n;
+}
+
+/// Returns an iterator in which the underlying iterator and the counter
+/// are both advanced by `n` in reverse.
+template<class I, class D, class N> inline
+FZ_DECLTYPE(
+    (counted_iterator<I, D>(
+        declval<I>() - declval<N>(),
+        declval<D>() - declval<N>()
+    )),
+    (counted_iterator<I, D>)
+) operator-(const counted_iterator<I, D>& i, N n) {
+    return counted_iterator<I, D>(i.base() - n, i.count() - n);
+}
+
+/// Returns the distance between two iterators.
+template<class I, class J, class D, class E> inline
+FZ_DECLTYPE(declval<I>() - declval<J>(), (typename common_type<D, E>::type))
+operator-(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
+    return i.base() - j.base();
+}
+
+/// Returns the distance between two iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(
+    declval<I>() - declval<J>(),
+    (typename common_type<
+         typename _priv::counted_iterator_::difference_type<J>::type,
+         D
+     >::type)
+) operator-(const I& i, const counted_iterator<J, D>& j) {
+    return i - j.base();
+}
+
+/// Returns the distance between two iterators.
+template<class I, class J, class D> inline
+FZ_DECLTYPE(
+    declval<I>() - declval<J>(),
+    (typename common_type<
+         D,
+         typename _priv::counted_iterator_::difference_type<J>::type
+     >::type)
+) operator-(const counted_iterator<I, D>& i, const J& j) {
+    return i.base() - j;
+}
+
 /// Constructs a `counted_iterator` with an initial count.
 ///
-/// @param i            The iterator to be wrapped.
+/// @param iterator     The iterator to be wrapped.
 /// @param init_count   The initial count.
 ///
 /// @see counted_iterator
-template<class Iterator, class Counter>
+template<class Iterator> inline
 counted_iterator<Iterator> iterator_counter(
-    Iterator i,
+    const Iterator& iterator,
     typename counted_iterator<Iterator>::difference_type init_count =
-        typename counted_iterator<Iterator>::difference_type()) {
-    return counted_iterator<Iterator>(i, init_count);
-}
+        typename counted_iterator<Iterator>::difference_type()
+) { return counted_iterator<Iterator>(iterator, init_count); }
 
 /// @}
 

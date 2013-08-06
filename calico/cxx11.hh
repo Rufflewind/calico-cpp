@@ -14,7 +14,7 @@
 /// incomplete and do not support every compiler.  Full feature testing is
 /// best provided by actual build tools.
 
-/// @addtogroup FzCxx11 C++11
+/// @defgroup FzCxx11 C++11
 ///
 /// Implementation of various features from C++11 for compatibility purposes.
 ///
@@ -44,8 +44,6 @@
 /// For unsupported compilers, the preferable approach is to add specific
 /// feature tests into the build system (e.g. Autoconf, CMake) and then define
 /// the appropriate `HAVE_`... macros.
-///
-/// @{
 
 // Defined if *all* C++11 features are supported.
 #if __cplusplus >= 201103L \
@@ -215,8 +213,6 @@
 #   define HAVE_TYPE_TRAITS 1
 #endif
 
-/// @}
-
 // ---------------------------------------------------------------------------
 
 // Remove the local macros
@@ -225,7 +221,7 @@
 #undef glib_date
 
 // For documentation purposes
-#ifdef DOC_ONLY
+#ifdef FZ_DOC_ONLY
 #define HAVE_UINT32
 #define HAVE_UINT64
 #endif
@@ -312,6 +308,10 @@ typedef HAVE_UINT64 uint64_t;
 #   define FZ_STATIC_ASSERT_MSG(line) FZ_STATIC_ASSERT_MSG2(line)
 #   define FZ_STATIC_ASSERT_MSG2(line) static_assertion_failed_at_line_ ## line
 //
+/// @addtogroup FzUtility
+//
+/// @{
+//
 /// @def static_assert(expression, message)
 ///
 /// Performs a static assertion of the expression.
@@ -319,7 +319,9 @@ typedef HAVE_UINT64 uint64_t;
 /// Note: when template arguments are present, it may be necessary to protect
 /// the `expression` with parentheses if the preprocessor interprets it
 /// incorrectly (since it does not treat angle brackets as delimiters).
-///
+//
+/// @}
+//
 #   define static_assert(expression, message)                           \
         enum { FZ_STATIC_ASSERT_MSG(__LINE__) = 1 / (int) (expression) }
 #endif
@@ -358,6 +360,10 @@ struct match_cv<T, const volatile U> { typedef const volatile T type; };
 
 /// @}
 
+/// @addtogroup FzCxx11
+///
+/// @{
+
 #ifdef HAVE_TYPE_TRAITS
 using std::add_const;
 using std::add_cv;
@@ -365,6 +371,7 @@ using std::add_lvalue_reference;
 using std::add_pointer;
 using std::add_rvalue_reference;
 using std::add_volatile;
+using std::common_type;
 using std::conditional;
 using std::decay;
 using std::enable_if;
@@ -395,10 +402,6 @@ using std::remove_reference;
 using std::remove_volatile;
 using std::true_type;
 #else
-
-/// @addtogroup FzCxx11
-///
-/// @{
 
 /// Represents a compile-time constant of integral type.
 template<class T, T Value>
@@ -523,6 +526,61 @@ template<class T> struct remove_reference<T&> { typedef T type; };
 #ifdef HAVE_RVALUE
 template<class T> struct remove_reference<T&&> { typedef T type; };
 #endif
+
+#endif // HAVE_TYPE_TRAITS
+
+// ---------------------------------------------------------------------------
+//
+// Rvalue helper functions
+// =======================
+
+#ifdef HAVE_RVALUE_HELPERS
+using std::declval;
+using std::forward;
+using std::move;
+#else
+
+/// Converts a type into an unevaluated operand.
+template<class T>
+typename add_rvalue_reference<T>::type declval() noexcept;
+
+#if defined(HAVE_RVALUE) || defined(FZ_DOC_ONLY)
+/// Perfectly forwards the given argument.
+template<class T>
+inline constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept {
+    static_assert(!is_lvalue_reference<T>::value,
+                  "template argument T cannot be an lvalue reference");
+    return static_cast<T&&>(t);
+}
+template<class T>
+inline constexpr T&& forward(typename remove_reference<T>::type& t) noexcept {
+    return static_cast<T&&>(t);
+}
+
+/// Converts an rvalue reference into an xvalue.
+template<class T>
+inline constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
+    static_cast<typename remove_reference<T>::type&&>(t);
+}
+#else // HAVE_RVALUE
+/// Forwards the given argument (fallback version without rvalue support).
+template<class T>
+inline constexpr T& forward(T& t) noexcept {
+    return t;
+}
+template<class T>
+inline constexpr const T& forward(const T& t) noexcept {
+    return t;
+}
+#endif // HAVE_RVALUE
+#endif // HAVE_RVALUE_HELPERS
+
+// ---------------------------------------------------------------------------
+//
+// Type traits (continued)
+// ======================
+
+#ifndef HAVE_TYPE_TRAITS
 
 /// Returns one of the types based on a boolean condition.
 template<bool Condition, class TrueT, class FalseT>
@@ -682,6 +740,49 @@ struct is_convertible<From, To,
 template<class From, class To>
 struct is_convertible : _priv::is_convertible<From, To> {};
 
+namespace _priv {
+#ifdef HAVE_DECLTYPE
+template<class T, class U>
+struct common_type {
+    typedef decltype(true ? declval<T>() : declval<U>()) type;
+};
+#else
+template<class T, class U, class = void>
+struct common_type; // Currently not defined
+template<class T, class U>
+struct common_type<T, U, typename enable_if<is_same<T, U>::value>::type> {
+    typedef T type;
+};
+#endif
+}
+/// Returns a common type among the given types.  Without support for variadic
+/// templates, this template can only support 2 template arguments.  Without
+/// `decltype` support, the common type is only defined if the types are thes
+/// same).
+#ifdef HAVE_VARIADIC_TEMPLATE
+template<class ...T>
+struct common_type;
+template<class T>
+struct common_type<T> {
+    typedef T type;
+};
+template<class T, class U>
+struct common_type<T, U> {
+    typedef typename _priv::common_type<T, U>::type type;
+};
+template<class T, class U, class ...V>
+struct common_type<T, U, V...> {
+    typedef typename common_type<
+        typename common_type<T, U>::type, V...>::type type;
+};
+#else
+template<class T, class U>
+struct common_type {
+    typedef typename _priv::common_type<T, U>::type type;
+};
+#endif
+
+
 /// Returns the number of dimensions in the array type.
 template<class T>
 struct rank : integral_constant<std::size_t, 0> {};
@@ -809,54 +910,13 @@ inline T* addressof(T& x) {
 }
 #endif // HAVE_ADDRESSOF
 
-#ifdef HAVE_RVALUE_HELPERS
-using std::declval;
-using std::forward;
-using std::move;
-#else
-
-/// Converts a type into an unevaluated operand.
-template<class T>
-typename add_rvalue_reference<T>::type declval() noexcept;
-
-#if defined(HAVE_RVALUE) || defined(DOC_ONLY)
-/// Perfectly forwards the given argument.
-template<class T>
-inline constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept {
-    static_assert(!is_lvalue_reference<T>::value,
-                  "template argument T cannot be an lvalue reference");
-    return static_cast<T&&>(t);
-}
-template<class T>
-inline constexpr T&& forward(typename remove_reference<T>::type& t) noexcept {
-    return static_cast<T&&>(t);
-}
-
-/// Converts an rvalue reference into an xvalue.
-template<class T>
-inline constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
-    static_cast<typename remove_reference<T>::type&&>(t);
-}
-#else // HAVE_RVALUE
-/// Forwards the given argument (fallback version without rvalue support).
-template<class T>
-inline constexpr T& forward(T& t) noexcept {
-    return t;
-}
-template<class T>
-inline constexpr const T& forward(const T& t) noexcept {
-    return t;
-}
-#endif // HAVE_RVALUE
-#endif // HAVE_RVALUE_HELPERS
-
 // ---------------------------------------------------------------------------
 //
 // String helper functions
 // =======================
 
 #ifdef HAVE_STRING_HELPERS
-using std::to_string
+using std::to_string;
 #endif
 
 /// Constructs a string representation of an object using the stream insertion
@@ -878,27 +938,91 @@ inline std::string to_string(const T& x) {
 /// @addtogroup FzUtility
 /// @{
 
+/// Used to remove parentheses around a type expression: when a type `T` is
+/// passed in as a function type of the form `void(T)`, a typedef named `type`
+/// is provided to recover the type `T`.
+template<class>   struct unparenthesize_type;
+template<class T> struct unparenthesize_type<void(T)> { typedef T type;    };
+template<>        struct unparenthesize_type<void()>  { typedef void type; };
+
+/// @def FZ_UNPARENS(type_expr)
+///
+/// Removes the parentheses around a type expression.
+#ifndef FZ_DOC_ONLY
+#   define FZ_UNPARENS(type_expr)                                       \
+        typename ::fz::unparenthesize_type<void(type_expr)>::type
+#else
+#   define FZ_UNPARENS(type_expr) auto
+#endif
+
+/// @def FZ_VALID_VAL(expr)
+///
+/// Constructs an unevaluated context for the given expression to test the its
+/// validity.  Returns the `return_value` if `value_expr` is valid; causes a
+/// compiler error otherwise.  The result can be used to perform SFINAE tests.
+#ifndef FZ_DOC_ONLY
+#   define FZ_VALID_VAL(value_expr, return_value)               \
+        (sizeof(value_expr, 0) ? return_value : return_value)
+#else
+#   define FZ_VALID_VAL(value_expr, return_value) return_value
+#endif
+
+/// @def FZ_VALID_TYPE(type_expr)
+///
+/// Returns the `return_type` if `type_expr` is a valid type; causes a
+/// compiler error otherwise.  The result can be used to perform SFINAE tests.
+#ifndef FZ_DOC_ONLY
+#   define FZ_VALID_TYPE(type_expr, return_type)                        \
+        typename ::fz::enable_if<                                       \
+            FZ_VALID_VAL(fz::declval<FZ_UNPARENS(type_expr)>(), true),  \
+            FZ_UNPARENS(return_type)                                    \
+        >::type
+#else
+#   define FZ_VALID_TYPE(type_expr, return_type) return_type
+#endif
+
+/// @def FZ_DECLTYPE(expr, fallback_type)
+///
+/// Equivalent to `decltype(expr)` if available; otherwise, defaults to the
+/// `fallback_type` provided that the expression is valid (the macro uses an
+/// `enable_if` check to do this).
+#if defined(HAVE_DECLTYPE) || defined(FZ_DOC_ONLY)
+#   define FZ_DECLTYPE(expr, fallback_type) decltype(expr)
+#else
+#   define FZ_DECLTYPE(expr, fallback_type)     \
+        typename ::fz::enable_if<               \
+            FZ_VALID_VAL(expr, true),           \
+            FZ_UNPARENS(fallback_type)          \
+        >::type
+#endif
+
+// Doxygen does not handle decltype properly so it must be hidden
+#ifdef FZ_DOC_ONLY
+#   define decltype(expr) auto
+#endif
+
+/// @def FZ_ENABLE_IF(condition, type_expr)
+///
+/// Convenience macro for performing `enable_if` tests.
+#ifndef FZ_DOC_ONLY
+#   define FZ_ENABLE_IF(condition, type_expr)                                \
+        typename ::fz::enable_if<(condition), FZ_UNPARENS(type_expr)>::type
+#else
+#   define FZ_ENABLE_IF(condition, type_expr) type_expr
+#endif
+
 /// Constructs a string representation of an object using the stream insertion
 /// operator (`<<`).
 template<class T>
 inline std::string to_string(const T& x); // Defined earlier
 
 namespace _priv {
-template<class It,
-         class = typename std::iterator_traits<It>::iterator_category>
-struct ensure_iterator { typedef It type; };
-#if defined(HAVE_DECLTYPE) && defined(HAVE_RVALUE)
-template<class T, class = void>
-struct get_iterator {
-    typedef decltype(begin(declval<T>())) type;
-};
-#else
 template<class T, class = void>
 struct has_const_iterator : false_type {};
 template<class T>
 struct has_const_iterator<T,
-    typename conditional<true, void, typename T::const_iterator>::type>
-    : true_type {};
+    FZ_VALID_TYPE(typename T::const_iterator, void)
+> : true_type {};
 template<class T, class = void>
 struct get_iterator {
     typedef typename conditional<
@@ -911,15 +1035,20 @@ struct get_iterator {
         >::type
     >::type type;
 };
+
 template<class It>
-struct get_iterator<std::pair<It, It>, typename ensure_iterator<It>::type> {
-    typedef It type;
-};
-#endif
+struct get_iterator<std::pair<It, It>,
+    FZ_VALID_TYPE(typename It::iterator_category, void)
+> { typedef It type; };
 }
 /// Obtains the default iterator type of a container or array.
 template<class T>
-struct get_iterator { typedef typename _priv::get_iterator<T>::type type; };
+struct get_iterator {
+    typedef FZ_DECLTYPE(
+        begin(declval<T>()),
+        typename _priv::get_iterator<T>::type
+    ) type;
+};
 
 /// @}
 
@@ -938,43 +1067,41 @@ using std::end;
 #else
 
 /// Returns an iterator to the beginning of a container.
-template<class C>
-inline typename get_iterator<C&>::type
+template<class C> inline
+FZ_DECLTYPE(declval<C&>().begin(),       typename get_iterator<C&>::type)
 begin(C& c)          { return c.begin(); }
 
 /// Returns an iterator to the beginning of a container.
-template<class C>
-inline typename get_iterator<const C&>::type
+template<class C> inline
+FZ_DECLTYPE(declval<const C&>().begin(), typename get_iterator<const C&>::type)
 begin(const C& c)    { return c.begin(); }
 
 /// Returns an iterator to the beginning of an array.
-template<class T, std::size_t N>
-inline typename get_iterator<T (&)[N]>::type
+template<class T, std::size_t N> inline T*
 begin(T (&array)[N]) { return array;     }
 
 /// Returns a const-qualified iterator to the beginning of a container.
-template<class C>
-inline typename get_iterator<const C&>::type
+template<class C> inline
+FZ_DECLTYPE(begin(declval<const C&>()), typename get_iterator<const C&>::type)
 cbegin(const C& c)   { return begin(c);  }
 
 /// Returns an iterator to the end of a container.
-template<class C>
-inline typename get_iterator<C&>::type
+template<class C> inline
+FZ_DECLTYPE(declval<C&>().end(),        typename get_iterator<C&>::type)
 end(C& c)            { return c.end();   }
 
 /// Returns an iterator to the end of a container.
-template<class C>
-inline typename get_iterator<const C&>::type
+template<class C> inline
+FZ_DECLTYPE(declval<const C&>().end(),  typename get_iterator<const C&>::type)
 end(const C& c)      { return c.end();   }
 
 /// Returns an iterator to the end of an array.
-template<class T, std::size_t N>
-inline typename get_iterator<T (&)[N]>::type
+template<class T, std::size_t N> inline T*
 end(T (&array)[N])   { return array + N; }
 
 /// Returns a const-qualified iterator to the end of a container.
-template<class C>
-inline typename get_iterator<const C&>::type
+template<class C> inline
+FZ_DECLTYPE(end(declval<const C&>()),   typename get_iterator<const C&>::type)
 cend(const C& c)     { return end(c);    }
 
 #endif // HAVE_BEGIN_END
@@ -988,15 +1115,19 @@ namespace std {
 /// @addtogroup FzUtility
 /// @{
 
-/// Returns the first item in the iterator pair.
-template<class Iterator>
-inline typename fz::_priv::ensure_iterator<Iterator>::type
-begin(const std::pair<Iterator, Iterator>& p) { return p.first;  }
+/// Returns the first item in an iterator pair.
+template<class Iterator> inline
+FZ_VALID_TYPE(
+    typename std::iterator_traits<Iterator>::iterator_category,
+    Iterator
+) begin(const std::pair<Iterator, Iterator>& p) { return p.first;  }
 
-/// Returns the second item in the iterator pair.
-template<class Iterator>
-inline typename fz::_priv::ensure_iterator<Iterator>::type
-end(const std::pair<Iterator, Iterator>& p)   { return p.second; }
+/// Returns the second item in an iterator pair.
+template<class Iterator> inline
+FZ_VALID_TYPE(
+    typename std::iterator_traits<Iterator>::iterator_category,
+    Iterator
+) end(const std::pair<Iterator, Iterator>& p)   { return p.second; }
 
 /// @}
 
