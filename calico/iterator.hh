@@ -1,6 +1,7 @@
 #ifndef FZ_ITERATOR_HH
 #define FZ_ITERATOR_HH
 #include <iterator>
+#include <stdexcept>
 #include "cxx11.hh"
 namespace fz {
 namespace _priv {
@@ -108,7 +109,6 @@ template<class Iterator,
          class Distance =
              typename std::iterator_traits<Iterator>::difference_type>
 class counted_iterator {
-    typedef std::iterator_traits<Iterator> _traits;
 public:
 
     /// Underlying iterator type.
@@ -427,6 +427,262 @@ counted_iterator<Iterator> iterator_counter(
     typename counted_iterator<Iterator>::difference_type init_count =
         typename counted_iterator<Iterator>::difference_type()
 ) { return counted_iterator<Iterator>(iterator, init_count); }
+
+/// An `RandomAccessIterator` that stores an integer value of type `T`.  The
+/// dereferenced value of the iterator is the integer itself.
+///
+/// @tparam T     An integer type to be wrapped.
+/// @tparam Tag   An arbitrary tag used to distinguish between specializations
+///               of this template.
+template<class T, class Tag = void>
+class integer_iterator {
+public:
+
+    /// Value type.
+    typedef T value_type;
+
+    /// Difference_type.
+    typedef value_type difference_type;
+
+    /// Pointer type.
+    typedef const value_type* pointer;
+
+    /// Reference type.
+    typedef const value_type& reference;
+
+    /// Iterator category.
+    typedef std::random_access_iterator_tag iterator_category;
+
+    /// Constructs an iterator with the given value.
+    explicit integer_iterator(value_type i = 0) : _i(i) {}
+
+    /// Returns the integer value of the iterator.
+    reference operator*() const { return _i; }
+
+    /// Member access for the value of the iterator (most likely has no
+    /// members since `value_type` is likely an integer type).
+    pointer operator->() const { return &*this; }
+
+    /// Returns an iterator with value equal to the current value plus an
+    /// integer.
+    reference operator[](const difference_type& n) { return *(*this + n); }
+
+    /// Compares the value of the iterators.
+    bool operator==(const integer_iterator& other) {
+        return _i == other._i;
+    }
+
+    /// Compares the value of the iterators.
+    bool operator!=(const integer_iterator& other) {
+        return _i != other._i;
+    }
+
+    /// Compares the value of the iterators.
+    bool operator<=(const integer_iterator& other) {
+        return _i <= other._i;
+    }
+
+    /// Compares the value of the iterators.
+    bool operator>=(const integer_iterator& other) {
+        return _i >= other._i;
+    }
+
+    /// Compares the value of the iterators.
+    bool operator<(const integer_iterator& other) {
+        return _i < other._i;
+    }
+
+    /// Compares the value of the iterators.
+    bool operator>(const integer_iterator& other) {
+        return _i > other._i;
+    }
+
+    /// Pre-increments the value of the iterator.
+    integer_iterator& operator++() { ++_i; return *this; }
+
+    /// Post-increments the value of the iterator.
+    integer_iterator operator++(int) { return integer_iterator(_i++); }
+
+    /// Increases the value of the iterator.
+    integer_iterator& operator+=(const difference_type& n) {
+        _i += n;
+        return *this;
+    }
+
+    /// Pre-decrements the value of the iterator.
+    integer_iterator& operator--() { --_i; return *this; }
+
+    /// Post-decrements the value of the iterator.
+    integer_iterator operator--(int) { return integer_iterator(_i--); }
+
+    /// Decreases the value of the iterator.
+    integer_iterator& operator-=(const difference_type& n) {
+        _i -= n;
+        return *this;
+    }
+
+    /// Adds an integer to the value of the iterator.
+    friend integer_iterator
+    operator+(const integer_iterator& i, const difference_type& j) {
+        return integer_iterator(i._i + j);
+    }
+
+    /// Adds an integer to the value of the iterator.
+    friend integer_iterator
+    operator+(const difference_type& i, const integer_iterator& j) {
+        return j + i;
+    }
+
+    /// Subtracts an integer from the value of the iterator.
+    friend integer_iterator
+    operator-(const integer_iterator& i, const difference_type& j) {
+        return integer_iterator(i._i - j);
+    }
+
+    /// Subtracts an integer from the value of the iterator.
+    friend integer_iterator
+    operator-(const difference_type& i, const integer_iterator& j) {
+        return j - i;
+    }
+
+    /// Subtracts the values of the two iterators.
+    friend difference_type
+    operator-(const integer_iterator& i, const integer_iterator& j) {
+        return i._i - j._i;
+    }
+
+    /// Returns an iterator with value equal to `T()`.
+    template<class C>
+    integer_iterator begin(const C&) const {
+        return integer_iterator(value_type());
+    }
+
+    /// Returns an iterator with value equal to the size of the container.
+    template<class C>
+    integer_iterator end(const C& c) const {
+        return integer_iterator(static_cast<value_type>(c.size()));
+    }
+
+private:
+    value_type _i;
+};
+
+/// Base class for defining an immutable, iterable container with a known
+/// size.
+template<
+    class Derived,
+    class Iterator,
+    class Size = std::size_t>
+class const_container_base {
+public:
+
+    /// Size type.
+    typedef Size size_type;
+
+    /// Const iterator.
+    typedef Iterator const_iterator;
+
+    /// Const pointer.
+    typedef typename std::iterator_traits<const_iterator>::pointer
+            const_pointer;
+
+    /// Const reference.
+    typedef typename std::iterator_traits<const_iterator>::reference
+            const_reference;
+
+    /// Difference type.
+    typedef typename std::iterator_traits<const_iterator>::difference_type
+            difference_type;
+
+    /// Value type.
+    typedef typename std::iterator_traits<const_iterator>::value_type
+            value_type;
+
+    /// Creates a container with the given number of elements.
+    explicit const_container_base(size_type size)
+        : _size(size) {}
+
+    /// Returns whether the container is empty.
+    bool empty() const {
+        return _size == 0;
+    }
+
+    /// Returns the number of elements in the container.
+    size_type size() const {
+        return _size;
+    }
+
+    /// Returns a reference to the first element in the container (provided
+    /// that the container is not empty).
+    const_reference front() const {
+        return *cbegin();
+    }
+
+    /// Returns a reference to the last element in the container (provided
+    /// that the container is not empty and the container is bidirectional).
+    FZ_ENABLE_IF(
+        (is_base_of<
+             std::bidirectional_iterator_tag,
+             typename std::iterator_traits<const_iterator>::iterator_category
+         >::value),
+        const_reference
+    ) back() const {
+        return *--cend();
+    }
+
+    /// Returns a const-qualified iterator to the beginning of the container.
+    const_iterator begin() const {
+        return const_iterator::begin(*static_cast<const Derived*>(this));
+    }
+
+    /// Returns a const-qualified iterator to the beginning of the container.
+    const_iterator cbegin() const {
+        return cbegin(*static_cast<const Derived*>(this));
+    }
+
+    /// Returns a const-qualified iterator to the end of the container.
+    const_iterator end() const {
+        return const_iterator::end(*static_cast<const Derived*>(this));
+    }
+
+    /// Returns a const-qualified iterator to the end of the container.
+    const_iterator cend() const {
+        return cend(*static_cast<const Derived*>(this));
+    }
+
+    /// Accesses the element at a given index (if the container supports
+    /// random access).
+    FZ_ENABLE_IF(
+        (is_base_of<
+             std::random_access_iterator_tag,
+             typename std::iterator_traits<const_iterator>::iterator_category
+         >::value),
+        const_reference
+    ) at(size_type index) const {
+        // First check is not strictly needed, but can be useful in case
+        // `size_type` happens to be a signed type.
+        if (index < size_type() || index >= _size)
+            throw std::out_of_range("index out of range");
+        return (*this)[index];
+    }
+
+    /// Accesses the element at a given index (if the container supports
+    /// random access).
+    FZ_ENABLE_IF(
+        (is_base_of<
+             std::random_access_iterator_tag,
+             typename std::iterator_traits<const_iterator>::iterator_category
+         >::value),
+        const_reference
+    ) operator[](size_type index) const {
+        return *(cbegin() + index);
+    }
+
+protected:
+    ~const_container_base() {};
+private:
+    size_type _size;
+};
 
 /// @}
 
