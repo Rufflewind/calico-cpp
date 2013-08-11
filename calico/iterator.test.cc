@@ -1,9 +1,12 @@
+#include <cstdio>
+#include <iostream>
 #include <list>
 #include <vector>
 #include "iterator.hh"
 using namespace fz;
 
-int main() {
+void statictest() {
+
     // random
     {
         std::vector<int>::const_iterator p;
@@ -51,4 +54,14 @@ int main() {
         (void) (p != r);
         (void) (r != p);
     }
+}
+
+
+int main(int argc, char**) {
+#ifdef HAVE_AUTO
+    integer_iterator<int> nats(0), end(argc);
+    auto sq = [](int x) { return x + 42; };
+    for (auto i : transform(make_range(nats, end), sq))
+        std::printf("%d\n", i);
+#endif
 }

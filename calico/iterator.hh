@@ -74,7 +74,7 @@ public:
         return !(*static_cast<Derived*>(this) == i);
     }
 
-    /// Member access of the element pointed to by the iterator.
+    /// Member access of the object pointed to by the iterator.
     pointer operator->() const {
         return _pointer::get(**static_cast<Derived*>(this));
     }
@@ -90,13 +90,11 @@ public:
 template<class, class>
 class counted_iterator;
 namespace _priv {
-struct counted_iterator_ {
-    // Can't think of a better way to do this
-    template<class, class = void> struct difference_type {};
-    template<class I>             struct difference_type<I,
-        FZ_VALID_TYPE(typename I::iterator_category, void)
-    > { typedef typename std::iterator_traits<I>::difference_type type; };
-    };
+// Can't think of a better way to do this
+template<class, class = void> struct difference_type {};
+template<class I>             struct difference_type<I,
+    FZ_VALID_TYPE(typename I::iterator_category, void)
+> { typedef typename std::iterator_traits<I>::difference_type type; };
 }
 
 /// An iterator adapter that counts the offset as the iterator moves.
@@ -116,7 +114,7 @@ public:
 
     /// Iterator category.
     typedef typename std::iterator_traits<iterator_type>::iterator_category
-        iterator_category;
+            iterator_category;
 
     /// Value type.
     typedef typename std::iterator_traits<iterator_type>::value_type value_type;
@@ -130,8 +128,7 @@ public:
     /// Reference type.
     typedef typename std::iterator_traits<iterator_type>::reference reference;
 
-    /// Default initializes a `counted_iterator` with an unspecified counter
-    /// value.
+    /// Default initializes the iterator with an unspecified counter value.
     counted_iterator() {}
 
     /// Constructs a `counted_iterator` with an initial count.
@@ -144,34 +141,22 @@ public:
     ) : _i(iterator), _count(init_count) {}
 
     /// Returns the underlying iterator.
-    const iterator_type& base() const {
-        return _i;
-    }
+    const iterator_type& base() const { return _i; }
 
     /// Returns the underlying iterator.
-    operator iterator_type() const {
-        return _i;
-    }
+    operator iterator_type() const { return _i; }
 
     /// Returns the current value of the counter.
-    difference_type count() const {
-        return _count;
-    }
+    difference_type count() const { return _count; }
 
     /// Sets the current value of the counter.
-    void set_count(difference_type value) {
-        _count = value;
-    }
+    void set_count(difference_type value) { _count = value; }
 
     /// Returns the pointed-to object.
-    reference operator*() const {
-        return *_i;
-    }
+    reference operator*() const { return *_i; }
 
-    /// Allows member access for the pointed-to object.
-    pointer operator->() const {
-        return &**this;
-    }
+    /// Member access of the object pointed to by the iterator.
+    pointer operator->() const { return &**this; }
 
     /// Post-increments the underlying iterator and the counter.
     counted_iterator operator++(int) {
@@ -393,24 +378,30 @@ operator-(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
 
 /// Returns the distance between two iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(
-    declval<I>() - declval<J>(),
-    (typename common_type<
-         typename _priv::counted_iterator_::difference_type<J>::type,
-         D
-     >::type)
+FZ_VALID_TYPE(
+    typename _priv::difference_type<I>::type,
+    (FZ_DECLTYPE(
+        declval<I>() - declval<J>(),
+        (typename common_type<
+             typename _priv::difference_type<I>::type,
+             D
+         >::type)
+    ))
 ) operator-(const I& i, const counted_iterator<J, D>& j) {
     return i - j.base();
 }
 
 /// Returns the distance between two iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(
-    declval<I>() - declval<J>(),
-    (typename common_type<
-         D,
-         typename _priv::counted_iterator_::difference_type<J>::type
-     >::type)
+FZ_VALID_TYPE(
+    typename _priv::difference_type<J>::type,
+    (FZ_DECLTYPE(
+        declval<I>() - declval<J>(),
+        (typename common_type<
+             D,
+             typename _priv::difference_type<J>::type
+         >::type)
+    ))
 ) operator-(const counted_iterator<I, D>& i, const J& j) {
     return i.base() - j;
 }
@@ -459,41 +450,42 @@ public:
     /// Returns the integer value of the iterator.
     reference operator*() const { return _i; }
 
-    /// Member access for the value of the iterator (most likely has no
-    /// members since `value_type` is likely an integer type).
+    /// Member access of the object pointed to by the iterator.
     pointer operator->() const { return &*this; }
 
     /// Returns an iterator with value equal to the current value plus an
     /// integer.
-    reference operator[](const difference_type& n) { return *(*this + n); }
+    reference operator[](const difference_type& n) const {
+        return *(*this + n);
+    }
 
     /// Compares the value of the iterators.
-    bool operator==(const integer_iterator& other) {
+    bool operator==(const integer_iterator& other) const {
         return _i == other._i;
     }
 
     /// Compares the value of the iterators.
-    bool operator!=(const integer_iterator& other) {
+    bool operator!=(const integer_iterator& other) const {
         return _i != other._i;
     }
 
     /// Compares the value of the iterators.
-    bool operator<=(const integer_iterator& other) {
+    bool operator<=(const integer_iterator& other) const {
         return _i <= other._i;
     }
 
     /// Compares the value of the iterators.
-    bool operator>=(const integer_iterator& other) {
+    bool operator>=(const integer_iterator& other) const {
         return _i >= other._i;
     }
 
     /// Compares the value of the iterators.
-    bool operator<(const integer_iterator& other) {
+    bool operator<(const integer_iterator& other) const {
         return _i < other._i;
     }
 
     /// Compares the value of the iterators.
-    bool operator>(const integer_iterator& other) {
+    bool operator>(const integer_iterator& other) const {
         return _i > other._i;
     }
 
@@ -567,12 +559,16 @@ private:
     value_type _i;
 };
 
-/// Base class for defining an immutable, iterable container with a known
-/// size.
+/// Base class for defining an immutable, iterable container.  A minimal
+/// definition requires the `begin`, and `end` methods.
 template<
     class Derived,
     class Iterator,
-    class Size = std::size_t>
+    class Size =
+    typename make_unsigned<
+        typename std::iterator_traits<Iterator>::difference_type
+    >::type
+>
 class const_container_base {
 public:
 
@@ -598,24 +594,27 @@ public:
     typedef typename std::iterator_traits<const_iterator>::value_type
             value_type;
 
-    /// Creates a container with the given number of elements.
-    explicit const_container_base(size_type size)
-        : _size(size) {}
+    /// Creates a container.
+    explicit const_container_base() {}
 
     /// Returns whether the container is empty.
     bool empty() const {
-        return _size == 0;
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return dthis->size() == size_type();
     }
 
     /// Returns the number of elements in the container.
     size_type size() const {
-        return _size;
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return static_cast<size_type>(
+            std::distance(dthis->begin(), dthis->end()));
     }
 
     /// Returns a reference to the first element in the container (provided
     /// that the container is not empty).
     const_reference front() const {
-        return *cbegin();
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return *dthis->cbegin();
     }
 
     /// Returns a reference to the last element in the container (provided
@@ -627,27 +626,32 @@ public:
          >::value),
         const_reference
     ) back() const {
-        return *--cend();
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return *--dthis->cend();
     }
 
     /// Returns a const-qualified iterator to the beginning of the container.
     const_iterator begin() const {
-        return const_iterator::begin(*static_cast<const Derived*>(this));
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return const_iterator::begin(*dthis);
     }
 
     /// Returns a const-qualified iterator to the beginning of the container.
     const_iterator cbegin() const {
-        return cbegin(*static_cast<const Derived*>(this));
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return dthis->begin();
     }
 
     /// Returns a const-qualified iterator to the end of the container.
     const_iterator end() const {
-        return const_iterator::end(*static_cast<const Derived*>(this));
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return const_iterator::end(*dthis);
     }
 
     /// Returns a const-qualified iterator to the end of the container.
     const_iterator cend() const {
-        return cend(*static_cast<const Derived*>(this));
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return dthis->end();
     }
 
     /// Accesses the element at a given index (if the container supports
@@ -661,9 +665,10 @@ public:
     ) at(size_type index) const {
         // First check is not strictly needed, but can be useful in case
         // `size_type` happens to be a signed type.
-        if (index < size_type() || index >= _size)
+        const Derived* dthis = static_cast<const Derived*>(this);
+        if (index < size_type() || index >= dthis->size())
             throw std::out_of_range("index out of range");
-        return (*this)[index];
+        return (*dthis)[index];
     }
 
     /// Accesses the element at a given index (if the container supports
@@ -675,14 +680,302 @@ public:
          >::value),
         const_reference
     ) operator[](size_type index) const {
-        return *(cbegin() + index);
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return *(dthis->cbegin() + index);
     }
 
 protected:
     ~const_container_base() {};
-private:
-    size_type _size;
 };
+
+template<class InputIterator>
+class iterator_range
+    : public const_container_base<
+          iterator_range<InputIterator>,
+          InputIterator> {
+public:
+    iterator_range(const InputIterator& first, const InputIterator& last)
+        : first(first), last(last) {}
+    InputIterator first;
+    InputIterator last;
+    InputIterator begin() const { return first; }
+    InputIterator end()   const { return last;  }
+};
+
+template<class InputIterator> inline
+iterator_range<InputIterator>
+make_range(const InputIterator& first, const InputIterator& last) {
+    return iterator_range<InputIterator>(first, last);
+}
+
+/// An iterator that applies a function to each element.
+template<class InputIterator, class UnaryOperation>
+class transform_iterator {
+public:
+
+    /// Underlying iterator type.
+    typedef InputIterator iterator_type;
+
+    /// Iterator category.
+    typedef typename std::iterator_traits<iterator_type>::iterator_category
+            iterator_category;
+
+    /// Difference type.
+    typedef typename std::iterator_traits<iterator_type>::difference_type
+            difference_type;
+
+    /// Value type.
+    typedef typename result_of<
+                UnaryOperation(
+                    typename std::iterator_traits<iterator_type>::reference
+                )
+            >::type value_type;
+
+    /// Reference type.
+    typedef value_type reference;
+
+    /// Pointer type.
+    typedef const value_type* pointer;
+
+    /// Default initializer.
+    transform_iterator() {}
+
+    /// Constructs an iterator that applies a function to each element.
+    transform_iterator(
+        const iterator_type& it,
+        const UnaryOperation& op
+    ) : _it(it), _op(op) {}
+
+    /// Returns the underlying iterator.
+    const iterator_type& base() const { return _it; }
+
+    /// Returns the function object.
+    const UnaryOperation& function() const { return _op; }
+
+    /// Returns the underlying iterator.
+    operator iterator_type() const { return _it; }
+
+    /// Returns the pointed-to object.
+    reference operator*() const { return _op(*_it); }
+
+    /// Pre-increments the iterator.
+    transform_iterator& operator++() {
+        ++_it;
+        return *this;
+    }
+
+    /// Post-increments the iterator.
+    transform_iterator operator++(int) {
+        transform_iterator t = *this;
+        ++*this;
+        return t;
+    }
+
+    /// Pre-decrements the iterator.
+    FZ_VALID_TYPE(
+        (FZ_DECLTYPE(--declval<iterator_type>(), void)),
+        transform_iterator&
+    ) operator--() {
+        --_it;
+        return *this;
+    }
+
+    /// Post-decrements the iterator.
+    FZ_VALID_TYPE(
+        (FZ_DECLTYPE(declval<iterator_type>()--, void)),
+        transform_iterator
+    ) operator--(int) {
+        transform_iterator t = *this;
+        --*this;
+        return t;
+    }
+
+    /// Advances the iterator by `n`.
+    FZ_VALID_TYPE(
+        (FZ_DECLTYPE(
+            declval<iterator_type>() += declval<difference_type>(),
+            void
+        )),
+        transform_iterator&
+    ) operator+=(difference_type n) {
+        _it += n;
+        return *this;
+    }
+
+    /// Advances the iterator by `n` in reverse.
+    FZ_VALID_TYPE(
+        (FZ_DECLTYPE(
+            declval<iterator_type>() -= declval<difference_type>(),
+            void
+        )),
+        transform_iterator&
+    ) operator-=(difference_type n) {
+        _it -= n;
+        return *this;
+    }
+
+private:
+    iterator_type _it;
+    UnaryOperation _op;
+};
+
+/// Compares the underlying iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(declval<I>() == declval<I>(), bool)
+operator==(const transform_iterator<I, F>& i,
+           const transform_iterator<I, F>& j) {
+    return i.base() == j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(declval<I>() != declval<I>(), bool)
+operator!=(const transform_iterator<I, F>& i,
+           const transform_iterator<I, F>& j) {
+    return i.base() != j.base();
+}
+
+
+/// Compares the underlying iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(declval<I>() <= declval<I>(), bool)
+operator<=(const transform_iterator<I, F>& i,
+           const transform_iterator<I, F>& j) {
+    return i.base() <= j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(declval<I>() >= declval<I>(), bool)
+operator>=(const transform_iterator<I, F>& i,
+           const transform_iterator<I, F>& j) {
+    return i.base() >= j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(declval<I>() < declval<I>(), bool)
+operator<(const transform_iterator<I, F>& i,
+          const transform_iterator<I, F>& j) {
+    return i.base() < j.base();
+}
+
+/// Compares the underlying iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(declval<I>() > declval<I>(), bool)
+operator>(const transform_iterator<I, F>& i,
+          const transform_iterator<I, F>& j) {
+    return i.base() > j.base();
+}
+
+/// Returns an iterator advanced by `n`.
+template<class I, class F> inline
+FZ_DECLTYPE(
+    (transform_iterator<I, F>(
+        declval<I>() +
+        declval<typename transform_iterator<I, F>::difference_type>(),
+        declval<F>())),
+    (transform_iterator<I, F>)
+) operator+(const transform_iterator<I, F>& i,
+            typename transform_iterator<I, F>::difference_type n) {
+    return transform_iterator<I, F>(i.base() + n, i.function());
+}
+
+/// Returns an iterator advanced by `n`.
+template<class I, class F> inline
+FZ_DECLTYPE(
+    (declval<transform_iterator<I, F> >() +
+     declval<typename transform_iterator<I, F>::difference_type>()),
+    (transform_iterator<I, F>)
+) operator+(typename transform_iterator<I, F>::difference_type n,
+            const transform_iterator<I, F>& i) { return i + n; }
+
+/// Returns an iterator advanced by `n` in reverse.
+template<class I, class F> inline
+FZ_DECLTYPE(
+    (transform_iterator<I, F>(
+        declval<I>() -
+        declval<typename transform_iterator<I, F>::difference_type>(),
+        declval<F>())),
+    (transform_iterator<I, F>)
+) operator-(const transform_iterator<I, F>& i,
+          typename transform_iterator<I, F>::difference_type n) {
+    return transform_iterator<I, F>(i.base() - n, i.function());
+}
+
+/// Returns the distance between two iterators.
+template<class I, class F> inline
+FZ_DECLTYPE(
+    (declval<I>() - declval<I>()),
+    (typename transform_iterator<I, F>::difference_type)
+) operator-(const transform_iterator<I, F>& i,
+            const transform_iterator<I, F>& j) {
+    return i.base() - j.base();
+}
+
+/// A iterable container that represents the results from a `transform`
+/// function call.
+template<class InputIterator, class UnaryOperation>
+class transformed_range
+    : public const_container_base<
+          transformed_range<InputIterator, UnaryOperation>,
+          transform_iterator<InputIterator, UnaryOperation> > {
+public:
+
+    /// Const iterator type.
+    typedef transform_iterator<InputIterator, UnaryOperation> const_iterator;
+
+    /// Default constructor.
+    transformed_range() {}
+
+    /// Constructor.
+    transformed_range(
+        const InputIterator& first,
+        const InputIterator& last,
+        const UnaryOperation& op
+    ) : _first(first), _last(last), _op(op) {}
+
+    /// Returns the beginning to the container.
+    const_iterator begin() const { return const_iterator(_first, _op); }
+
+    /// Returns the end to the container.
+    const_iterator end()   const { return const_iterator(_last,  _op); }
+
+private:
+    InputIterator _first;
+    InputIterator _last;
+    UnaryOperation _op;
+};
+
+/// Applies a given function to every element of an iterator range and returns
+/// the result as a lazily evaluated iterable container (i.e. the "map"
+/// function).
+template<class InputIterator, class UnaryOperation> inline
+transformed_range<InputIterator, UnaryOperation>
+transform(
+    const InputIterator& first,
+    const InputIterator& last,
+    const UnaryOperation& op
+) {
+    return transformed_range<InputIterator, UnaryOperation>(first, last, op);
+}
+
+/// Applies a given function to every element of an iterable container and
+/// returns the result as a lazily evaluated iterable container (i.e. the
+/// "map" function).
+template<class Container, class UnaryOperation> inline
+transformed_range<
+    typename get_iterator<const Container&>::type,
+    UnaryOperation>
+transform(
+    const Container& c,
+    const UnaryOperation& op
+) {
+    return transformed_range<
+               typename get_iterator<const Container&>::type,
+               UnaryOperation>
+           (begin(c), end(c), op);
+}
 
 /// @}
 

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <iterator>
 #include <sstream>
+#include <string>
 #include <utility>
 /// @file
 ///
@@ -45,9 +46,11 @@
 /// feature tests into the build system (e.g. Autoconf, CMake) and then define
 /// the appropriate `HAVE_`... macros.
 
+
 // Defined if *all* C++11 features are supported.
 #if __cplusplus >= 201103L \
-    && !defined(__clang__) // Clang does not fully support C++11
+    && !defined(__clang__) \
+    && !defined(__GNUC__)
 #   undef  HAVE_CXX11
 #   define HAVE_CXX11 1
 #endif
@@ -86,6 +89,12 @@
 #else
 #   undef  constexpr
 #   define constexpr
+#endif
+#if defined(HAVE_CXX1Y)                         \
+    || clang_feature(cxx_relaxed_constexpr)
+#   define FZ_CONSTEXPR_1Y constexpr
+#else
+#   define FZ_CONSTEXPR_1Y
 #endif
 
 // Defined if type inspection (`decltype`) is supported.
@@ -201,7 +210,7 @@
 
 // Defined if `to_string` is available.
 #if defined(HAVE_CXX11)                         \
-    || glib_date(20090421)
+    || gcc_version(4, 8)
 #   define HAVE_STRING_HELPERS
 #endif
 
@@ -279,7 +288,6 @@
 namespace fz {
 
 /// @addtogroup FzCxx11
-//
 /// @{
 
 /// Fastest 16-bit unsigned integer type.
@@ -309,7 +317,6 @@ typedef HAVE_UINT64 uint64_t;
 #   define FZ_STATIC_ASSERT_MSG2(line) static_assertion_failed_at_line_ ## line
 //
 /// @addtogroup FzUtility
-//
 /// @{
 //
 /// @def static_assert(expression, message)
@@ -338,7 +345,7 @@ typedef HAVE_UINT64 uint64_t;
 /// Namespace `fz`.
 namespace fz {
 
-/// @addtogroup FzUtility Utilities
+/// @defgroup FzUtility Utilities
 ///
 /// Miscellaneous utility functions.
 ///
@@ -350,18 +357,17 @@ namespace fz {
 /// Obtains a type related to `T` with the same const-volatile qualifiers as
 /// `Target`.
 template<class T, class Target>
-struct match_cv { typedef T type; };
+struct match_cv                      { typedef T type; };
 template<class T, class U>
-struct match_cv<T, const U> { typedef const T type; };
+struct match_cv<T, const U>          { typedef const T type; };
 template<class T, class U>
-struct match_cv<T, volatile U> { typedef volatile T type; };
+struct match_cv<T, volatile U>       { typedef volatile T type; };
 template<class T, class U>
 struct match_cv<T, const volatile U> { typedef const volatile T type; };
 
 /// @}
 
 /// @addtogroup FzCxx11
-///
 /// @{
 
 #ifdef HAVE_TYPE_TRAITS
@@ -392,6 +398,7 @@ using std::is_same;
 using std::is_void;
 using std::is_volatile;
 using std::make_signed;
+using std::make_unsigned;
 using std::rank;
 using std::remove_all_extents;
 using std::remove_const;
@@ -400,6 +407,7 @@ using std::remove_extent;
 using std::remove_pointer;
 using std::remove_reference;
 using std::remove_volatile;
+using std::result_of;
 using std::true_type;
 #else
 
@@ -418,38 +426,37 @@ struct integral_constant {
 
     /// Converts the integral constant type into its constant value.
     constexpr operator value_type() const { return value; }
-
 };
 
 /// An alias to `integral_constant` with a `value` of `true`.
-typedef integral_constant<bool, true> true_type;
+typedef integral_constant<bool, true>  true_type;
 
 /// An alias to `integral_constant` with a `value` of `false`.
 typedef integral_constant<bool, false> false_type;
 
 /// Returns whether the type is `const`-qualified.
-template<class T> struct is_const : false_type {};
-template<class T> struct is_const<const T> : true_type {};
+template<class T> struct is_const                : false_type {};
+template<class T> struct is_const<const T>       : true_type {};
 
 /// Returns whether the type is `volatile`-qualified.
-template<class T> struct is_volatile : false_type {};
+template<class T> struct is_volatile             : false_type {};
 template<class T> struct is_volatile<volatile T> : true_type {};
 
 /// Adds the `const` qualifier to the type.
-template<class T> struct add_const { typedef const T type; };
+template<class T> struct add_const             { typedef const T type; };
 
 /// Adds the `volatile` qualifier to the type.
-template<class T> struct add_volatile { typedef volatile T type; };
+template<class T> struct add_volatile       { typedef volatile T type; };
 
 /// Adds both the `const` and `volatile` qualifiers to the type.
-template<class T> struct add_cv { typedef const volatile T type; };
+template<class T> struct add_cv       { typedef const volatile T type; };
 
 /// Removes the `const` qualifier from the type.
-template<class T> struct remove_const { typedef T type; };
-template<class T> struct remove_const<const T> { typedef T type; };
+template<class T> struct remove_const                { typedef T type; };
+template<class T> struct remove_const<const T>       { typedef T type; };
 
 /// Removes the `volatile` qualifier from the type.
-template<class T> struct remove_volatile { typedef T type; };
+template<class T> struct remove_volatile             { typedef T type; };
 template<class T> struct remove_volatile<volatile T> { typedef T type; };
 
 /// Removes both the `const` and `volatile` qualifiers from the type.
@@ -461,8 +468,8 @@ struct remove_cv {
 };
 
 /// Returns whether the types are the same.
-template<class T, class U> struct is_same : false_type {};
-template<class T> struct is_same<T, T> : true_type {};
+template<class, class> struct is_same       : false_type {};
+template<class T>      struct is_same<T, T> : true_type {};
 
 /// Returns whether the type is a void type.
 template<class T>
@@ -476,37 +483,35 @@ struct is_void
     > {};
 
 /// Returns whether the type is an lvalue or rvalue reference.
-template<class T> struct is_lvalue_reference : false_type {};
-template<class T> struct is_lvalue_reference<T&> : true_type {};
+template<class T> struct is_lvalue_reference      : false_type {};
+template<class T> struct is_lvalue_reference<T&>  : true_type {};
 
 /// Returns whether the type is an rvalue reference.
-template<class T> struct is_rvalue_reference : false_type {};
+template<class T> struct is_rvalue_reference      : false_type {};
 #ifdef HAVE_RVALUE
 template<class T> struct is_rvalue_reference<T&&> : true_type {};
 #endif
 
 /// Returns whether the type is an lvalue or rvalue reference.
-template<class T> struct is_reference : false_type {};
-template<class T> struct is_reference<T&> : true_type {};
+template<class T> struct is_reference             : false_type {};
+template<class T> struct is_reference<T&>         : true_type {};
 #ifdef HAVE_RVALUE
-template<class T> struct is_reference<T&&> : true_type {};
+template<class T> struct is_reference<T&&>        : true_type {};
 #endif
 
 namespace _priv {
 template<class T, bool = is_void<T>::value>
-struct add_lvalue_reference { typedef T& type; };
+struct add_lvalue_reference           { typedef T&  type; };
 template<class T>
-struct add_lvalue_reference<T, true> { typedef T type; };
+struct add_lvalue_reference<T, true>  { typedef T   type; };
 }
 /// Converts the type into an lvalue reference.
 template<class T>
-struct add_lvalue_reference {
-    typedef typename _priv::add_lvalue_reference<T>::type type;
-};
+struct add_lvalue_reference : _priv::add_lvalue_reference<T> {};
 
 namespace _priv {
 template<class T, bool = is_void<T>::value>
-struct add_rvalue_reference { typedef T type; };
+struct add_rvalue_reference           { typedef T   type; };
 #ifdef HAVE_RVALUE
 template<class T>
 struct add_rvalue_reference<T, false> { typedef T&& type; };
@@ -516,18 +521,104 @@ struct add_rvalue_reference<T, false> { typedef T&& type; };
 /// reference, in which case the type is returned unchanged.  If rvalue
 /// references are not supported, the type is returned unchanged.
 template<class T>
-struct add_rvalue_reference {
-    typedef typename _priv::add_rvalue_reference<T>::type type;
-};
+struct add_rvalue_reference : _priv::add_rvalue_reference<T> {};
 
 /// Converts to a non-reference type.
-template<class T> struct remove_reference { typedef T type; };
-template<class T> struct remove_reference<T&> { typedef T type; };
+template<class T> struct remove_reference      { typedef T type; };
+template<class T> struct remove_reference<T&>  { typedef T type; };
 #ifdef HAVE_RVALUE
 template<class T> struct remove_reference<T&&> { typedef T type; };
 #endif
 
 #endif // HAVE_TYPE_TRAITS
+
+/// @}
+
+/// @addtogroup FzUtility
+/// @{
+
+// ---------------------------------------------------------------------------
+//
+// Macros
+// ======
+
+/// Used to remove parentheses around a type expression: when a type `T` is
+/// passed in as a function type of the form `void(T)`, a typedef named `type`
+/// is provided to recover the type `T`.
+template<class>   struct unparenthesize_type;
+template<class T> struct unparenthesize_type<void(T)> { typedef T type;    };
+template<>        struct unparenthesize_type<void()>  { typedef void type; };
+
+/// @def FZ_UNPARENS(type_expr)
+///
+/// Removes the parentheses around a type expression.
+#ifndef FZ_DOC_ONLY
+#   define FZ_UNPARENS(type_expr)                                       \
+        typename ::fz::unparenthesize_type<void(type_expr)>::type
+#else
+#   define FZ_UNPARENS(type_expr) auto
+#endif
+
+/// @def FZ_VALID_VAL(expr)
+///
+/// Constructs an unevaluated context for the given expression to test the its
+/// validity.  Returns the `return_value` if `value_expr` is valid; causes a
+/// compiler error otherwise.  The result can be used to perform SFINAE tests.
+#ifndef FZ_DOC_ONLY
+#   define FZ_VALID_VAL(value_expr, return_value)               \
+        (sizeof(value_expr, 0) ? return_value : return_value)
+#else
+#   define FZ_VALID_VAL(value_expr, return_value) return_value
+#endif
+
+/// @def FZ_VALID_TYPE(type_expr)
+///
+/// Returns the `return_type` if `type_expr` is a valid type; causes a
+/// compiler error otherwise.  The result can be used to perform SFINAE tests.
+#ifndef FZ_DOC_ONLY
+#   define FZ_VALID_TYPE(type_expr, return_type)                        \
+        typename ::fz::enable_if<                                       \
+            FZ_VALID_VAL(fz::declval<FZ_UNPARENS(type_expr)>(), true),  \
+            FZ_UNPARENS(return_type)                                    \
+        >::type
+#else
+#   define FZ_VALID_TYPE(type_expr, return_type) return_type
+#endif
+
+/// @def FZ_DECLTYPE(expr, fallback_type)
+///
+/// Equivalent to `decltype(expr)` if available; otherwise, defaults to the
+/// `fallback_type` provided that the expression is valid (the macro uses an
+/// `enable_if` check to do this).
+#if defined(HAVE_DECLTYPE) || defined(FZ_DOC_ONLY)
+#   define FZ_DECLTYPE(expr, fallback_type) decltype(expr)
+#else
+#   define FZ_DECLTYPE(expr, fallback_type)     \
+        typename ::fz::enable_if<               \
+            FZ_VALID_VAL(expr, true),           \
+            FZ_UNPARENS(fallback_type)          \
+        >::type
+#endif
+
+// Doxygen does not handle decltype properly so it must be hidden
+#ifdef FZ_DOC_ONLY
+#   define decltype(expr) auto
+#endif
+
+/// @def FZ_ENABLE_IF(condition, type_expr)
+///
+/// Convenience macro for performing `enable_if` tests.
+#ifndef FZ_DOC_ONLY
+#   define FZ_ENABLE_IF(condition, type_expr)                                \
+        typename ::fz::enable_if<(condition), FZ_UNPARENS(type_expr)>::type
+#else
+#   define FZ_ENABLE_IF(condition, type_expr) type_expr
+#endif
+
+/// @}
+
+/// @addtogroup FzCxx11
+/// @{
 
 // ---------------------------------------------------------------------------
 //
@@ -546,30 +637,30 @@ typename add_rvalue_reference<T>::type declval() noexcept;
 
 #if defined(HAVE_RVALUE) || defined(FZ_DOC_ONLY)
 /// Perfectly forwards the given argument.
-template<class T>
-inline constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept {
+template<class T> inline constexpr
+T&& forward(typename remove_reference<T>::type&& t) noexcept {
     static_assert(!is_lvalue_reference<T>::value,
                   "template argument T cannot be an lvalue reference");
     return static_cast<T&&>(t);
 }
-template<class T>
-inline constexpr T&& forward(typename remove_reference<T>::type& t) noexcept {
+template<class T> inline constexpr
+T&& forward(typename remove_reference<T>::type& t) noexcept {
     return static_cast<T&&>(t);
 }
 
 /// Converts an rvalue reference into an xvalue.
-template<class T>
-inline constexpr typename remove_reference<T>::type&& move(T&& t) noexcept {
+template<class T> inline FZ_CONSTEXPR_1Y
+typename remove_reference<T>::type&& move(T&& t) noexcept {
     static_cast<typename remove_reference<T>::type&&>(t);
 }
 #else // HAVE_RVALUE
 /// Forwards the given argument (fallback version without rvalue support).
-template<class T>
-inline constexpr T& forward(T& t) noexcept {
+template<class T> inline constexpr
+T& forward(T& t) noexcept {
     return t;
 }
-template<class T>
-inline constexpr const T& forward(const T& t) noexcept {
+template<class T> inline constexpr
+const T& forward(const T& t) noexcept {
     return t;
 }
 #endif // HAVE_RVALUE
@@ -584,9 +675,9 @@ inline constexpr const T& forward(const T& t) noexcept {
 
 /// Returns one of the types based on a boolean condition.
 template<bool Condition, class TrueT, class FalseT>
-struct conditional { typedef FalseT type; };
+struct conditional                      { typedef FalseT type; };
 template<class TrueT, class FalseT>
-struct conditional<true, TrueT, FalseT> { typedef TrueT type; };
+struct conditional<true, TrueT, FalseT> { typedef  TrueT type; };
 
 /// Contains a `type` member equal to `T` if `Condition` is `true`.
 template<bool Condition, class T = void> struct enable_if {};
@@ -595,11 +686,11 @@ template<class T> struct enable_if<true, T> { typedef T type; };
 namespace _priv {
 template<class T> struct make_signed {};
 template<> struct make_signed<unsigned char>      { typedef signed char type; };
-template<> struct make_signed<unsigned short>     { typedef short type; };
-template<> struct make_signed<unsigned>           { typedef int type; };
-template<> struct make_signed<unsigned long>      { typedef long type; };
+template<> struct make_signed<unsigned short>     { typedef       short type; };
+template<> struct make_signed<unsigned>           { typedef         int type; };
+template<> struct make_signed<unsigned long>      { typedef        long type; };
 #ifdef HAVE_LONG_LONG
-template<> struct make_signed<unsigned long long> { typedef long long type; };
+template<> struct make_signed<unsigned long long> { typedef   long long type; };
 #endif
 }
 /// Converts an integral type to a signed type (only works on fundamental
@@ -615,10 +706,10 @@ template<class T> struct make_signed {
 
 namespace _priv {
 template<class T> struct make_unsigned {};
-template<> struct make_unsigned<signed char> { typedef unsigned char type; };
-template<> struct make_unsigned<short>     { typedef unsigned short type; };
-template<> struct make_unsigned<int>       { typedef unsigned type; };
-template<> struct make_unsigned<long>      { typedef unsigned long type; };
+template<> struct make_unsigned<signed char> { typedef unsigned    char type; };
+template<> struct make_unsigned<short>       { typedef unsigned   short type; };
+template<> struct make_unsigned<int>         { typedef unsigned         type; };
+template<> struct make_unsigned<long>        { typedef unsigned    long type; };
 #ifdef HAVE_LONG_LONG
 template<> struct make_unsigned<long long> { typedef unsigned long long type; };
 #endif
@@ -747,8 +838,8 @@ struct common_type {
     typedef decltype(true ? declval<T>() : declval<U>()) type;
 };
 #else
-template<class T, class U, class = void>
-struct common_type; // Currently not defined
+template<class, class, class = void>
+struct common_type {}; // Currently not defined
 template<class T, class U>
 struct common_type<T, U, typename enable_if<is_same<T, U>::value>::type> {
     typedef T type;
@@ -760,93 +851,175 @@ struct common_type<T, U, typename enable_if<is_same<T, U>::value>::type> {
 /// `decltype` support, the common type is only defined if the types are thes
 /// same).
 #ifdef HAVE_VARIADIC_TEMPLATE
-template<class ...T>
-struct common_type;
+template<class...>
+struct common_type {};
 template<class T>
-struct common_type<T> {
-    typedef T type;
-};
+struct common_type<T> { typedef T type; };
 template<class T, class U>
-struct common_type<T, U> {
-    typedef typename _priv::common_type<T, U>::type type;
-};
-template<class T, class U, class ...V>
-struct common_type<T, U, V...> {
-    typedef typename common_type<
-        typename common_type<T, U>::type, V...>::type type;
-};
+struct common_type<T, U> : _priv::common_type<T, U> {};
+template<class T, class U, class... V>
+struct common_type<T, U, V...>
+    :  common_type<typename common_type<T, U>::type, V...> {};
 #else
 template<class T, class U>
-struct common_type {
-    typedef typename _priv::common_type<T, U>::type type;
-};
+struct common_type : _priv::common_type<T, U> {};
 #endif
 
+namespace _priv {
+template<class, class = void> struct result_of {};
+#ifdef HAVE_DECLTYPE
+#ifdef HAVE_VARIADIC_TEMPLATE
+template<class F, class... T> struct result_of<F(T...),
+    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>()...)), void)> {
+    typedef       decltype(declval<F>()(declval<T>()...)) type;
+};
+#else
+template<class F>
+struct result_of<F(),
+    FZ_VALID_TYPE(decltype(declval<F>()()), void)> {
+    typedef       decltype(declval<F>()()) type;
+};
+template<class F, class T>
+struct result_of<F(T),
+    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>())), void)> {
+    typedef       decltype(declval<F>()(declval<T>())) type;
+};
+template<class F, class T, class U>
+struct result_of<F(T, U),
+    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>())), void)> {
+    typedef       decltype(declval<F>()(declval<T>(), declval<U>())) type;
+};
+template<class F, class T, class U, class V>
+struct result_of<F(T, U, V),
+    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
+                                        declval<V>())), void)> {
+    typedef       decltype(declval<F>()(declval<T>(), declval<U>(),
+                                        declval<V>())) type;
+};
+template<class F, class T, class U, class V, class W>
+struct result_of<F(T, U, V, W),
+    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
+                                        declval<V>(), declval<W>())), void)> {
+    typedef       decltype(declval<F>()(declval<T>(), declval<U>(),
+                                        declval<V>(), declval<W>())) type;
+};
+template<class F, class T, class U, class V, class W, class X>
+struct result_of<F(T, U, V, W, X),
+    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
+                                        declval<V>(), declval<W>(),
+                                        declval<X>())), void)> {
+    typedef       decltype(declval<F>()(declval<T>(), declval<U>(),
+                                        declval<V>(), declval<W>(),
+                                        declval<X>())) type;
+};
+#endif
+#else
+#ifdef HAVE_VARIADIC_TEMPLATE
+template<class F, class... T>
+struct result_of<F(T...),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+#else
+template<class F>
+struct result_of<F(),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+template<class F, class T>
+struct result_of<F(T),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+template<class F, class T, class U>
+struct result_of<F(T, U),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+template<class F, class T, class U, class V>
+struct result_of<F(T, U, V),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+template<class F, class T, class U, class V, class W>
+struct result_of<F(T, U, V, W),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+template<class F, class T, class U, class V, class W, class X>
+struct result_of<F(T, U, V, W, X),
+    FZ_VALID_TYPE(typename F::result_type, void)> {
+    typedef typename F::result_type type;
+};
+#endif
+#endif
+}
+/// Deduces the return type of a function call (up to 5 arguments if variadic
+/// templates are not supported).  If `decltype` is not available, it will use
+/// the `result_type` member of the function.
+template<class T>
+struct result_of : _priv::result_of<T> {};
 
 /// Returns the number of dimensions in the array type.
-template<class T>
-struct rank : integral_constant<std::size_t, 0> {};
-template<class T>
-struct rank<T[]> : integral_constant<std::size_t, rank<T>::value + 1> {};
-template<class T, std::size_t N>
-struct rank<T[N]> : integral_constant<std::size_t, rank<T>::value + 1> {};
+template<class T>                struct rank
+    : integral_constant<std::size_t, 0> {};
+template<class T>                struct rank<T[]>
+    : integral_constant<std::size_t, rank<T>::value + 1> {};
+template<class T, std::size_t N> struct rank<T[N]>
+    : integral_constant<std::size_t, rank<T>::value + 1> {};
 
 /// Returns whether the type is an array type.
-template<class T> struct is_array : false_type {};
-template<class T> struct is_array<T[]> : true_type {};
+template<class T>                struct is_array       : false_type {};
+template<class T>                struct is_array<T[]>  : true_type {};
 template<class T, std::size_t N> struct is_array<T[N]> : true_type {};
 
 /// Obtains the number of elements along the `N`-th dimension (or zero if
 /// unknown or outside bounds).
-template<class T, unsigned N = 0>
-struct extent : integral_constant<std::size_t, 0> {};
-template<class T>
-struct extent<T[], 0> : integral_constant<std::size_t, 0> {};
-template<class T, unsigned N>
-struct extent<T[], N>
+template<class T, unsigned N = 0>            struct extent
+    : integral_constant<std::size_t, 0> {};
+template<class T>                            struct extent<T[], 0>
+    : integral_constant<std::size_t, 0> {};
+template<class T, unsigned N>                struct extent<T[], N>
     : integral_constant<std::size_t, extent<T, N - 1>::value> {};
-template<class T, std::size_t N>
-struct extent<T[N], 0> : integral_constant<std::size_t, N> {};
-template<class T, std::size_t I, unsigned N>
-struct extent<T[I], N>
+template<class T, std::size_t N>             struct extent<T[N], 0>
+    : integral_constant<std::size_t, N> {};
+template<class T, std::size_t I, unsigned N> struct extent<T[I], N>
     : integral_constant<std::size_t, extent<T, N - 1>::value> {};
 
 /// Removes the first dimension of an array type.
 template<class T>
-struct remove_extent { typedef T type; };
+struct remove_extent       { typedef T type; };
 template<class T>
-struct remove_extent<T[]> { typedef T type; };
+struct remove_extent<T[]>  { typedef T type; };
 template<class T, std::size_t N>
 struct remove_extent<T[N]> { typedef T type; };
 
 /// Removes all the dimensions of an array type.
 template<class T>
-struct remove_all_extents { typedef T type;};
+struct remove_all_extents  { typedef T type; };
 template<class T>
-struct remove_all_extents<T[]> {
-    typedef typename remove_all_extents<T>::type type;
-};
+struct remove_all_extents<T[]>  : remove_all_extents<T> {};
 template<class T, std::size_t N>
-struct remove_all_extents<T[N]> {
-    typedef typename remove_all_extents<T>::type type;
-};
+struct remove_all_extents<T[N]> : remove_all_extents<T> {};
 
 /// Returns whether the the type is a function type (up to 5 arguments if
 /// variadic templates are not supported).
 template<class>
-struct is_function : false_type {};
+struct is_function                   : false_type {};
 #ifdef HAVE_VARIADIC_TEMPLATE
-template<class R, class ...Args>
-struct is_function<R(Args...)> : true_type {};
+template<class R, class... Args>
+struct is_function<R(Args...)>       : true_type {};
 #else
+template<class R>
+struct is_function<R()>              : true_type {};
 template<class R, class T>
-struct is_function<R(T)> : true_type {};
+struct is_function<R(T)>             : true_type {};
 template<class R, class T, class U>
-struct is_function<R(T, U)> : true_type {};
+struct is_function<R(T, U)>          : true_type {};
 template<class R, class T, class U, class V>
-struct is_function<R(T, U, V)> : true_type {};
+struct is_function<R(T, U, V)>       : true_type {};
 template<class R, class T, class U, class V, class W>
-struct is_function<R(T, U, V, W)> : true_type {};
+struct is_function<R(T, U, V, W)>    : true_type {};
 template<class R, class T, class U, class V, class W, class X>
 struct is_function<R(T, U, V, W, X)> : true_type {};
 #endif
@@ -864,15 +1037,12 @@ template<class T>
 struct is_pointer : _priv::is_pointer<typename remove_cv<T>::type> {};
 
 namespace _priv {
-template<class T> struct remove_pointer { typedef T type; };
+template<class T> struct remove_pointer     { typedef T type; };
 template<class T> struct remove_pointer<T*> { typedef T type; };
 }
 /// Converts to a non-pointer type.
 template<class T>
-struct remove_pointer {
-    typedef typename _priv::remove_pointer<
-        typename remove_cv<T>::type>::type type;
-};
+struct remove_pointer : _priv::remove_pointer<typename remove_cv<T>::type> {};
 
 namespace _priv {
 template<class T, class U = typename remove_reference<T>::type>
@@ -890,7 +1060,7 @@ struct decay {
 }
 /// Performs lvalue transformations and removes cv-qualifiers.
 template<class T>
-struct decay { typedef typename _priv::decay<T>::type type; };
+struct decay : _priv::decay<T> {};
 
 #endif // HAVE_TYPE_TRAITS
 
@@ -938,117 +1108,64 @@ inline std::string to_string(const T& x) {
 /// @addtogroup FzUtility
 /// @{
 
-/// Used to remove parentheses around a type expression: when a type `T` is
-/// passed in as a function type of the form `void(T)`, a typedef named `type`
-/// is provided to recover the type `T`.
-template<class>   struct unparenthesize_type;
-template<class T> struct unparenthesize_type<void(T)> { typedef T type;    };
-template<>        struct unparenthesize_type<void()>  { typedef void type; };
-
-/// @def FZ_UNPARENS(type_expr)
-///
-/// Removes the parentheses around a type expression.
-#ifndef FZ_DOC_ONLY
-#   define FZ_UNPARENS(type_expr)                                       \
-        typename ::fz::unparenthesize_type<void(type_expr)>::type
-#else
-#   define FZ_UNPARENS(type_expr) auto
-#endif
-
-/// @def FZ_VALID_VAL(expr)
-///
-/// Constructs an unevaluated context for the given expression to test the its
-/// validity.  Returns the `return_value` if `value_expr` is valid; causes a
-/// compiler error otherwise.  The result can be used to perform SFINAE tests.
-#ifndef FZ_DOC_ONLY
-#   define FZ_VALID_VAL(value_expr, return_value)               \
-        (sizeof(value_expr, 0) ? return_value : return_value)
-#else
-#   define FZ_VALID_VAL(value_expr, return_value) return_value
-#endif
-
-/// @def FZ_VALID_TYPE(type_expr)
-///
-/// Returns the `return_type` if `type_expr` is a valid type; causes a
-/// compiler error otherwise.  The result can be used to perform SFINAE tests.
-#ifndef FZ_DOC_ONLY
-#   define FZ_VALID_TYPE(type_expr, return_type)                        \
-        typename ::fz::enable_if<                                       \
-            FZ_VALID_VAL(fz::declval<FZ_UNPARENS(type_expr)>(), true),  \
-            FZ_UNPARENS(return_type)                                    \
-        >::type
-#else
-#   define FZ_VALID_TYPE(type_expr, return_type) return_type
-#endif
-
-/// @def FZ_DECLTYPE(expr, fallback_type)
-///
-/// Equivalent to `decltype(expr)` if available; otherwise, defaults to the
-/// `fallback_type` provided that the expression is valid (the macro uses an
-/// `enable_if` check to do this).
-#if defined(HAVE_DECLTYPE) || defined(FZ_DOC_ONLY)
-#   define FZ_DECLTYPE(expr, fallback_type) decltype(expr)
-#else
-#   define FZ_DECLTYPE(expr, fallback_type)     \
-        typename ::fz::enable_if<               \
-            FZ_VALID_VAL(expr, true),           \
-            FZ_UNPARENS(fallback_type)          \
-        >::type
-#endif
-
-// Doxygen does not handle decltype properly so it must be hidden
-#ifdef FZ_DOC_ONLY
-#   define decltype(expr) auto
-#endif
-
-/// @def FZ_ENABLE_IF(condition, type_expr)
-///
-/// Convenience macro for performing `enable_if` tests.
-#ifndef FZ_DOC_ONLY
-#   define FZ_ENABLE_IF(condition, type_expr)                                \
-        typename ::fz::enable_if<(condition), FZ_UNPARENS(type_expr)>::type
-#else
-#   define FZ_ENABLE_IF(condition, type_expr) type_expr
-#endif
-
 /// Constructs a string representation of an object using the stream insertion
 /// operator (`<<`).
 template<class T>
 inline std::string to_string(const T& x); // Defined earlier
 
 namespace _priv {
-template<class T, class = void>
-struct has_const_iterator : false_type {};
-template<class T>
-struct has_const_iterator<T,
-    FZ_VALID_TYPE(typename T::const_iterator, void)
-> : true_type {};
-template<class T, class = void>
-struct get_iterator {
+template<class, class = void> struct has_const_iterator : false_type {};
+template<class T>             struct has_const_iterator<T,
+    FZ_VALID_TYPE(typename T::const_iterator, void)>    : true_type  {};
+template<class, class = void> struct has_iterator       : false_type {};
+template<class T>             struct has_iterator<T,
+    FZ_VALID_TYPE(typename T::iterator, void)>          : true_type  {};
+template<class, class = void> struct get_iterator2 {};
+template<class T>             struct get_iterator2<T,
+    FZ_ENABLE_IF(is_array<T>::value, void)> {
+    typedef typename remove_extent<T>::type type;
+};
+template<class T>             struct get_iterator2<T,
+    FZ_ENABLE_IF(has_const_iterator<T>::value &&
+                 has_iterator<T>::value, void)> {
     typedef typename conditional<
-        is_array<T>::value,
-        typename remove_extent<T>::type,
-        typename conditional<
-            is_const<T>::value && has_const_iterator<T>::value,
-            typename T::const_iterator,
-            typename T::iterator
-        >::type
+        is_const<T>::value,
+        typename T::const_iterator,
+        typename T::iterator
     >::type type;
 };
-
-template<class It>
-struct get_iterator<std::pair<It, It>,
-    FZ_VALID_TYPE(typename It::iterator_category, void)
-> { typedef It type; };
+template<class T>             struct get_iterator2<T,
+    FZ_ENABLE_IF(has_const_iterator<T>::value &&
+                 !has_iterator<T>::value, void)> {
+    typedef typename T::const_iterator type;
+};
+template<class T>             struct get_iterator2<T,
+    FZ_ENABLE_IF(!has_const_iterator<T>::value &&
+                 has_iterator<T>::value, void)> {
+    typedef typename T::iterator type;
+};
+template<class It>            struct get_iterator2<
+    std::pair<It, It>, FZ_VALID_TYPE(typename It::iterator_category, void)> {
+    typedef It type;
+};
+template<class, class = void> struct get_iterator {};
+template<class T>             struct get_iterator<T,
+    FZ_VALID_TYPE(
+        (FZ_DECLTYPE(
+            begin(declval<T>()),
+            typename get_iterator2<T>::type
+        )),
+        void
+    )> {
+    typedef FZ_DECLTYPE(
+        begin(declval<T>()),
+        typename get_iterator2<T>::type
+    ) type;
+};
 }
 /// Obtains the default iterator type of a container or array.
 template<class T>
-struct get_iterator {
-    typedef FZ_DECLTYPE(
-        begin(declval<T>()),
-        typename _priv::get_iterator<T>::type
-    ) type;
-};
+struct get_iterator : _priv::get_iterator<T> {};
 
 /// @}
 
@@ -1058,7 +1175,6 @@ struct get_iterator {
 // =========================
 
 /// @addtogroup FzCxx11
-///
 /// @{
 
 #ifdef HAVE_BEGIN_END
