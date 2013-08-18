@@ -40,15 +40,20 @@ struct reference_to_pointer<T, T&> {
 
 /// A base class for implementing input iterators.
 ///
-/// The derived class is required to implement the following operations:
+/// The derived class is should implement the following operations:
 ///
 /// ~~~{.cpp}
-///     bool operator==(const Other&) const;
-///     Reference operator*() const;
+///     bool operator==(const Derived&) const;  // optional
+///     Reference operator*() const;            // optional
 ///     Derived& operator++();
 /// ~~~
 ///
-template<class Derived, class T, class Reference = T&>
+/// - If `operator==` is not implemented, it defaults to `false` (every
+///   iterator is distinct from each other).
+/// - If `operator*` is not implemented, it defaults to returning the iterator
+///   itself.
+///
+template<class Derived, class T = Derived, class Reference = T&>
 class input_iterator_base {
     typedef _priv::reference_to_pointer<T, Reference> _pointer;
 public:
@@ -68,11 +73,16 @@ public:
     /// Pointer type.
     typedef typename _pointer::type pointer;
 
+    /// Compares two iterators for equality.
+    bool operator==(const Derived& i) const { return false; }
+
     /// Compares two iterators for inequality.
-    template<class Other>
-    bool operator!=(const Other& i) const {
+    bool operator!=(const Derived& i) const {
         return !(*static_cast<Derived*>(this) == i);
     }
+
+    /// Returns the pointed-to object.
+    reference operator*() const { return *static_cast<Derived*>(this); }
 
     /// Member access of the object pointed to by the iterator.
     pointer operator->() const {
@@ -85,6 +95,9 @@ public:
         ++*static_cast<Derived*>(this);
         return x;
     }
+
+protected:
+    ~input_iterator_base() {}
 };
 
 template<class, class>

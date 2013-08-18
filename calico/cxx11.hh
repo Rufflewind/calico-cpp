@@ -615,6 +615,16 @@ template<>        struct unparenthesize_type<void()>  { typedef void type; };
 #   define FZ_ENABLE_IF(condition, type_expr) type_expr
 #endif
 
+/// @def FZ_ENABLE_IF_P(condition)
+///
+/// Convenience macro for performing `enable_if` tests in the parameter list.
+#ifndef DOC_ONLY
+#   define FZ_ENABLE_IF_P(condition)                    \
+        , typename ::fz::enable_if<(condition)>::type* = 0
+#else
+#   define FZ_ENABLE_IF_P(condition)
+#endif
+
 /// @}
 
 /// @addtogroup FzCxx11
@@ -1227,6 +1237,15 @@ cend(const C& c)     { return end(c);    }
 } // namespace fz
 
 namespace std {
+
+/// @addtogroup FzCxx11
+/// @{
+
+/// Hash function declaration (no specializations provided).
+template<class Key>
+struct hash;
+
+/// @}
 
 /// @addtogroup FzUtility
 /// @{
