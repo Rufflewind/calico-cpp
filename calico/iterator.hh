@@ -557,14 +557,17 @@ public:
     }
 
     /// Returns an iterator with value equal to `T()`.
-    template<class C>
-    integer_iterator begin(const C&) const {
+    template<class Container>
+    integer_iterator begin(const Container&) const {
         return integer_iterator(value_type());
     }
 
     /// Returns an iterator with value equal to the size of the container.
-    template<class C>
-    integer_iterator end(const C& c) const {
+    ///
+    /// Requirements:
+    /// - `FiniteContainer` has a method named `size()`.
+    template<class FiniteContainer>
+    integer_iterator end(const Container& c) const {
         return integer_iterator(static_cast<value_type>(c.size()));
     }
 
@@ -618,9 +621,9 @@ public:
 
     /// Returns the number of elements in the container.
     size_type size() const {
+        using std::distance;
         const Derived* dthis = static_cast<const Derived*>(this);
-        return static_cast<size_type>(
-            std::distance(dthis->begin(), dthis->end()));
+        return static_cast<size_type>(distance(dthis->begin(), dthis->end()));
     }
 
     /// Returns a reference to the first element in the container (provided
@@ -756,15 +759,47 @@ public:
     /// Constructs an iterator that applies a function to each element.
     transform_iterator(
         const iterator_type& it,
-        const iterator_type& end,
+        const iterator_type& last,
         const UnaryOperation& op
-    ) : _it(it), _end(end), _op(op) { _eval(); }
+    ) : _it(it), _last(last), _op(op) { _eval(); }
+
+    /// Returns the beginning iterator.
+    ///
+    /// Requirements:
+    /// - Underlying iterator must support `begin()` and `end()`.
+    /// - `UnaryOperation` must be default-initializable.
+    template<class Container> static
+    FZ_VALID_TYPE(
+        FZ_DECLTYPE((iterator_type::begin(declval<Container>()),
+                     iterator_type::end(declval<Container>())), void),
+        transform_iterator
+    ) begin(const Container& c) const {
+        return transform_iterator(
+            iterator_type::begin(c),
+            iterator_type::end(c),
+            UnaryOperation()
+        );
+    }
+
+    /// Returns the past-the-end iterator.
+    ///
+    /// Requirements:
+    /// - Underlying iterator must support `end()`.
+    /// - `UnaryOperation` must be default-initializable.
+    template<class Container> static
+    FZ_VALID_TYPE(
+        FZ_DECLTYPE(iterator_type::end(declval<Container>()), void),
+        transform_iterator
+    ) end(const Container& c) const {
+        const iterator_type last = iterator_type::end(c);
+        return transform_iterator(last, last, UnaryOperation());
+    }
 
     /// Returns the underlying iterator.
     const iterator_type& base() const { return _it; }
 
     /// Returns the underlying iterator.
-    const iterator_type& end() const { return _end; }
+    const iterator_type& last() const { return _last; }
 
     /// Returns the function object.
     const UnaryOperation& function() const { return _op; }
@@ -840,10 +875,10 @@ public:
 
 private:
     iterator_type _it;
-    iterator_type _end;
+    iterator_type _last;
     UnaryOperation _op;
     value_type _val;
-    void _eval() { if (_it != _end) _val = op(*_it); }
+    void _eval() { if (_it != _last) _val = op(*_it); }
 };
 
 /// Compares the underlying iterators.
@@ -905,7 +940,7 @@ FZ_DECLTYPE(
     (transform_iterator<I, F>)
 ) operator+(const transform_iterator<I, F>& i,
             typename transform_iterator<I, F>::difference_type n) {
-    return transform_iterator<I, F>(i.base() + n, i.end(), i.function());
+    return transform_iterator<I, F>(i.base() + n, i.last(), i.function());
 }
 
 /// Returns an iterator advanced by `n`.
@@ -927,7 +962,7 @@ FZ_DECLTYPE(
     (transform_iterator<I, F>)
 ) operator-(const transform_iterator<I, F>& i,
           typename transform_iterator<I, F>::difference_type n) {
-    return transform_iterator<I, F>(i.base() - n, i.end(), i.function());
+    return transform_iterator<I, F>(i.base() - n, i.last(), i.function());
 }
 
 /// Returns the distance between two iterators.
