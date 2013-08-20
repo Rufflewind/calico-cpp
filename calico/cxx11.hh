@@ -290,16 +290,16 @@ namespace fz {
 /// @addtogroup FzCxx11
 /// @{
 
-/// Fastest 16-bit unsigned integer type.
+/// Fastest unsigned integer type with a width of at least 16 bits.
 typedef HAVE_UINT_FAST16 uint_fast16_t;
 
 #ifdef HAVE_UINT32
-/// Fastest 32-bit unsigned integer typed.
+/// 32-bit unsigned integer type.
 typedef HAVE_UINT32 uint32_t;
 #endif
 
 #ifdef HAVE_UINT64
-/// Fastest 64-bit unsigned integer typed.
+/// 64-bit unsigned integer type.
 typedef HAVE_UINT64 uint64_t;
 #endif
 
@@ -1120,8 +1120,6 @@ inline std::string to_string(const T& x) {
 /// @addtogroup FzUtility
 /// @{
 
-/// Constructs a string representation of an object using the stream insertion
-/// operator (`<<`).
 template<class T>
 inline std::string to_string(const T& x); // Defined earlier
 

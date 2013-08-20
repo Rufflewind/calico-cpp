@@ -12,11 +12,6 @@ namespace fz {
 ///
 /// @{
 
-/// Constructs a string representation of an object using the stream insertion
-/// operator (`<<`).
-template<class T>
-inline std::string to_string(const T& x); // Defined in cxx11.hh
-
 /// Returns the same string.
 inline const std::string& to_string(const std::string& s) { return s; }
 

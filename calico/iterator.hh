@@ -562,7 +562,7 @@ public:
         return integer_iterator(value_type());
     }
 
-    /// Returns an iterator with value equal to the size of the container.
+    /// Returns an iterator with value equal to the `size()` of the container.
     ///
     /// Requirements:
     /// - `FiniteContainer` has a method named `size()`.
@@ -575,8 +575,12 @@ private:
     value_type _i;
 };
 
-/// Base class for defining an immutable, iterable container.  A minimal
-/// definition requires the `begin`, and `end` methods.
+/// Base class for defining an immutable, iterable container.
+///
+/// A minimal definition of this container requires overriding the `begin()`,
+/// and `end()` methods in the `Derived` class.  If none are defined, the base
+/// class will call the *static* functions `begin(Derived)` and `end(Derived)`
+/// defined in the iterator.
 template<
     class Derived,
     class Iterator,
