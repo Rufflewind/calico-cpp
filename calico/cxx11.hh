@@ -385,10 +385,12 @@ using std::extent;
 using std::false_type;
 using std::integral_constant;
 using std::is_abstract;
+using std::is_arithmetic;
 using std::is_array;
 using std::is_base_of;
 using std::is_const;
 using std::is_convertible;
+using std::is_floating_point;
 using std::is_function;
 using std::is_lvalue_reference;
 using std::is_pointer;
@@ -1176,6 +1178,50 @@ template<class T>             struct get_iterator<T,
 /// Obtains the default iterator type of a container or array.
 template<class T>
 struct get_iterator : _priv::get_iterator<T> {};
+
+namespace _priv {
+template<class, class = void>
+struct valid_call : false_type {};
+#ifdef HAVE_VARIADIC_TEMPLATE
+template<class F, class... T>
+struct valid_call<F(T...), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(declval<T>()...), 1)
+    >::type> : true_type {};
+#else
+template<class F>
+struct valid_call<F(), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(), 1)
+    >::type> : true_type {};
+template<class F, class T>
+struct valid_call<F(T), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(declval<T>()), 1)
+    >::type> : true_type {};
+template<class F, class T, class U>
+struct valid_call<F(T, U), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>()), 1)
+    >::type> : true_type {};
+template<class F, class T, class U, class V>
+struct valid_call<F(T, U, V), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>(),
+                                  declval<V>()), 1)
+    >::type> : true_type {};
+template<class F, class T, class U, class V, class W>
+struct valid_call<F(T, U, V, W), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>(),
+                                  declval<V>(), declval<W>()), 1)
+    >::type> : true_type {};
+template<class F, class T, class U, class V, class W, class X>
+struct valid_call<F(T, U, V, W, X), typename enable_if<
+        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>(), declval<V>(),
+                                  declval<W>(), declval<X>()), 1)
+    >::type> : true_type {};
+#endif
+}
+/// Returns whether the function call is valid.  When the template parameter
+/// is equal to `F(T...)`, it will return true if the function object `F` can
+/// be called with parameters of type `T...`.  If variadic templates are not
+/// supported, a maximum of 5 arguments are supported.
+template<class T> struct valid_call : _priv::valid_call<T> {};
 
 /// @}
 

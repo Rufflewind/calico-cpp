@@ -557,8 +557,8 @@ public:
     }
 
     /// Returns an iterator with value equal to `T()`.
-    template<class Container>
-    integer_iterator begin(const Container&) const {
+    template<class Container> static
+    integer_iterator begin(const Container&) {
         return integer_iterator(value_type());
     }
 
@@ -566,8 +566,8 @@ public:
     ///
     /// Requirements:
     /// - `FiniteContainer` has a method named `size()`.
-    template<class FiniteContainer>
-    integer_iterator end(const Container& c) const {
+    template<class Container> static
+    integer_iterator end(const Container& c) {
         return integer_iterator(static_cast<value_type>(c.size()));
     }
 
@@ -770,10 +770,10 @@ public:
     /// - `UnaryOperation` must be default-initializable.
     template<class Container> static
     FZ_VALID_TYPE(
-        FZ_DECLTYPE((iterator_type::begin(declval<Container>()),
-                     iterator_type::end(declval<Container>())), void),
+        (FZ_DECLTYPE((iterator_type::begin(declval<Container>()),
+                      iterator_type::end(declval<Container>())), void)),
         transform_iterator
-    ) begin(const Container& c) const {
+    ) begin(const Container& c) {
         return transform_iterator(
             iterator_type::begin(c),
             iterator_type::end(c),
@@ -788,9 +788,9 @@ public:
     /// - `UnaryOperation` must be default-initializable.
     template<class Container> static
     FZ_VALID_TYPE(
-        FZ_DECLTYPE(iterator_type::end(declval<Container>()), void),
+        (FZ_DECLTYPE(iterator_type::end(declval<Container>()), void)),
         transform_iterator
-    ) end(const Container& c) const {
+    ) end(const Container& c) {
         const iterator_type last = iterator_type::end(c);
         return transform_iterator(last, last, UnaryOperation());
     }
@@ -878,7 +878,7 @@ private:
     iterator_type _last;
     UnaryOperation _op;
     value_type _val;
-    void _eval() { if (_it != _last) _val = op(*_it); }
+    void _eval() { if (_it != _last) _val = _op(*_it); }
 };
 
 /// Compares the underlying iterators.
