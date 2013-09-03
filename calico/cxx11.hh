@@ -177,7 +177,7 @@
 #if defined(HAVE_CXX11)                         \
     || clang_feature(cxx_variadic_templates)    \
     || gcc_version(4, 3)                        \
-    || _MSC_VER >= 1700
+    || _MSC_VER >= 1701 // Future version (?)
 #   undef  HAVE_VARIADIC_TEMPLATE
 #   define HAVE_VARIADIC_TEMPLATE 1
 #endif
@@ -185,7 +185,7 @@
 // Defined if the `long long` integer type is available (since it's almost
 // always the case, this is defined by default).  To suppress this definition,
 // define `NO_LONG_LONG`.
-#if !defined(HAVE_LONG_LONG) and !defined(NO_LONG_LONG)
+#if !defined(HAVE_LONG_LONG) && !defined(NO_LONG_LONG)
 #   define HAVE_LONG_LONG 1
 #endif
 
@@ -643,9 +643,15 @@ using std::forward;
 using std::move;
 #else
 
+#ifndef _MSC_VER
 /// Converts a type into an unevaluated operand.
 template<class T>
 typename add_rvalue_reference<T>::type declval() noexcept;
+#else
+// Workaround for MSVC bug 753675
+template<class T>
+T&& declval() noexcept;
+#endif
 
 #if defined(HAVE_RVALUE) || defined(FZ_DOC_ONLY)
 /// Perfectly forwards the given argument.
@@ -1110,6 +1116,58 @@ inline std::string to_string(const T& x) {
     return stream.str();
 }
 
+// ---------------------------------------------------------------------------
+//
+// Iterator helper functions
+// =========================
+
+#ifdef HAVE_BEGIN_END
+using std::begin;
+using std::end;
+#else
+
+template<class> struct get_iterator;
+
+/// Returns an iterator to the beginning of a container.
+template<class C> inline
+FZ_DECLTYPE(declval<C&>().begin(),       typename get_iterator<C&>::type)
+begin(C& c)          { return c.begin(); }
+
+/// Returns an iterator to the beginning of a container.
+template<class C> inline
+FZ_DECLTYPE(declval<const C&>().begin(), typename get_iterator<const C&>::type)
+begin(const C& c)    { return c.begin(); }
+
+/// Returns an iterator to the beginning of an array.
+template<class T, std::size_t N> inline T*
+begin(T (&array)[N]) { return array;     }
+
+/// Returns a const-qualified iterator to the beginning of a container.
+template<class C> inline
+FZ_DECLTYPE(begin(declval<const C&>()), typename get_iterator<const C&>::type)
+cbegin(const C& c)   { return begin(c);  }
+
+/// Returns an iterator to the end of a container.
+template<class C> inline
+FZ_DECLTYPE(declval<C&>().end(),        typename get_iterator<C&>::type)
+end(C& c)            { return c.end();   }
+
+/// Returns an iterator to the end of a container.
+template<class C> inline
+FZ_DECLTYPE(declval<const C&>().end(),  typename get_iterator<const C&>::type)
+end(const C& c)      { return c.end();   }
+
+/// Returns an iterator to the end of an array.
+template<class T, std::size_t N> inline T*
+end(T (&array)[N])   { return array + N; }
+
+/// Returns a const-qualified iterator to the end of a container.
+template<class C> inline
+FZ_DECLTYPE(end(declval<const C&>()),   typename get_iterator<const C&>::type)
+cend(const C& c)     { return end(c);    }
+
+#endif // HAVE_BEGIN_END
+
 /// @}
 
 // ---------------------------------------------------------------------------
@@ -1220,61 +1278,6 @@ struct valid_call<F(T, U, V, W, X), typename enable_if<
 /// be called with parameters of type `T...`.  If variadic templates are not
 /// supported, a maximum of 5 arguments are supported.
 template<class T> struct valid_call : _priv::valid_call<T> {};
-
-/// @}
-
-// ---------------------------------------------------------------------------
-//
-// Iterator helper functions
-// =========================
-
-/// @addtogroup FzCxx11
-/// @{
-
-#ifdef HAVE_BEGIN_END
-using std::begin;
-using std::end;
-#else
-
-/// Returns an iterator to the beginning of a container.
-template<class C> inline
-FZ_DECLTYPE(declval<C&>().begin(),       typename get_iterator<C&>::type)
-begin(C& c)          { return c.begin(); }
-
-/// Returns an iterator to the beginning of a container.
-template<class C> inline
-FZ_DECLTYPE(declval<const C&>().begin(), typename get_iterator<const C&>::type)
-begin(const C& c)    { return c.begin(); }
-
-/// Returns an iterator to the beginning of an array.
-template<class T, std::size_t N> inline T*
-begin(T (&array)[N]) { return array;     }
-
-/// Returns a const-qualified iterator to the beginning of a container.
-template<class C> inline
-FZ_DECLTYPE(begin(declval<const C&>()), typename get_iterator<const C&>::type)
-cbegin(const C& c)   { return begin(c);  }
-
-/// Returns an iterator to the end of a container.
-template<class C> inline
-FZ_DECLTYPE(declval<C&>().end(),        typename get_iterator<C&>::type)
-end(C& c)            { return c.end();   }
-
-/// Returns an iterator to the end of a container.
-template<class C> inline
-FZ_DECLTYPE(declval<const C&>().end(),  typename get_iterator<const C&>::type)
-end(const C& c)      { return c.end();   }
-
-/// Returns an iterator to the end of an array.
-template<class T, std::size_t N> inline T*
-end(T (&array)[N])   { return array + N; }
-
-/// Returns a const-qualified iterator to the end of a container.
-template<class C> inline
-FZ_DECLTYPE(end(declval<const C&>()),   typename get_iterator<const C&>::type)
-cend(const C& c)     { return end(c);    }
-
-#endif // HAVE_BEGIN_END
 
 /// @}
 

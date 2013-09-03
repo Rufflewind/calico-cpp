@@ -458,7 +458,7 @@ public:
     typedef std::random_access_iterator_tag iterator_category;
 
     /// Constructs an iterator with the given value.
-    explicit integer_iterator(value_type i = 0) : _i(i) {}
+    explicit integer_iterator(value_type i = value_type()) : _i(i) {}
 
     /// Returns the integer value of the iterator.
     reference operator*() const { return _i; }
@@ -728,6 +728,26 @@ make_range(const InputIterator& first, const InputIterator& last) {
     return iterator_range<InputIterator>(first, last);
 }
 
+/// Constructs an iterator range of integers from `T()` to `end`.
+template<class T> inline
+iterator_range<integer_iterator<T> >
+integer_range(const T& end) {
+    return iterator_range<integer_iterator<T> >(
+        integer_iterator<T>(),
+        integer_iterator<T>(end)
+    );
+}
+
+/// Constructs an iterator range of integers from `begin` to `end`.
+template<class T> inline
+iterator_range<integer_iterator<T> >
+integer_range(const T& begin, const T& end) {
+    return iterator_range<integer_iterator<T> >(
+        integer_iterator<T>(begin),
+        integer_iterator<T>(end)
+    );
+}
+
 /// An iterator that applies a function to each element.
 template<class InputIterator, class UnaryOperation>
 class transform_iterator {
@@ -752,10 +772,14 @@ public:
             >::type value_type;
 
     /// Reference type.
-    typedef const value_type& reference;
+    typedef value_type reference;
 
+private:
+    typedef _priv::reference_to_pointer<value_type, reference> _pointer;
+
+public:
     /// Pointer type.
-    typedef const value_type* pointer;
+    typedef typename _pointer::type pointer;
 
     /// Default initializer.
     transform_iterator() {}
@@ -763,26 +787,20 @@ public:
     /// Constructs an iterator that applies a function to each element.
     transform_iterator(
         const iterator_type& it,
-        const iterator_type& last,
         const UnaryOperation& op
-    ) : _it(it), _last(last), _op(op) { _eval(); }
+    ) : _it(it), _op(op) {}
 
     /// Returns the beginning iterator.
     ///
     /// Requirements:
-    /// - Underlying iterator must support `begin()` and `end()`.
+    /// - Underlying iterator must support `begin()`.
     /// - `UnaryOperation` must be default-initializable.
     template<class Container> static
     FZ_VALID_TYPE(
-        (FZ_DECLTYPE((iterator_type::begin(declval<Container>()),
-                      iterator_type::end(declval<Container>())), void)),
+        (FZ_DECLTYPE(iterator_type::begin(declval<Container>()), void)),
         transform_iterator
     ) begin(const Container& c) {
-        return transform_iterator(
-            iterator_type::begin(c),
-            iterator_type::end(c),
-            UnaryOperation()
-        );
+        return transform_iterator(iterator_type::begin(c), UnaryOperation());
     }
 
     /// Returns the past-the-end iterator.
@@ -795,32 +813,24 @@ public:
         (FZ_DECLTYPE(iterator_type::end(declval<Container>()), void)),
         transform_iterator
     ) end(const Container& c) {
-        const iterator_type last = iterator_type::end(c);
-        return transform_iterator(last, last, UnaryOperation());
+        return transform_iterator(iterator_type::end(c), UnaryOperation());
     }
 
     /// Returns the underlying iterator.
     const iterator_type& base() const { return _it; }
 
-    /// Returns the underlying iterator.
-    const iterator_type& last() const { return _last; }
-
     /// Returns the function object.
     const UnaryOperation& function() const { return _op; }
 
-    /// Returns the underlying iterator.
-    operator iterator_type() const { return _it; }
-
     /// Returns the pointed-to object.
-    reference operator*() const { return _val; }
+    reference operator*() const { return _op(*_it); }
 
     /// Member access of the object pointed to by the iterator.
-    pointer operator->() const { return &_val; }
+    pointer operator->() const { return _pointer::get(_op(*_it)); }
 
     /// Pre-increments the iterator.
     transform_iterator& operator++() {
         ++_it;
-        _eval();
         return *this;
     }
 
@@ -837,7 +847,6 @@ public:
         transform_iterator&
     ) operator--() {
         --_it;
-        _eval();
         return *this;
     }
 
@@ -860,7 +869,6 @@ public:
         transform_iterator&
     ) operator+=(difference_type n) {
         _it += n;
-        _eval();
         return *this;
     }
 
@@ -873,16 +881,12 @@ public:
         transform_iterator&
     ) operator-=(difference_type n) {
         _it -= n;
-        _eval();
         return *this;
     }
 
 private:
     iterator_type _it;
-    iterator_type _last;
     UnaryOperation _op;
-    value_type _val;
-    void _eval() { if (_it != _last) _val = _op(*_it); }
 };
 
 /// Compares the underlying iterators.
@@ -944,7 +948,7 @@ FZ_DECLTYPE(
     (transform_iterator<I, F>)
 ) operator+(const transform_iterator<I, F>& i,
             typename transform_iterator<I, F>::difference_type n) {
-    return transform_iterator<I, F>(i.base() + n, i.last(), i.function());
+    return transform_iterator<I, F>(i.base() + n, i.function());
 }
 
 /// Returns an iterator advanced by `n`.
@@ -966,7 +970,7 @@ FZ_DECLTYPE(
     (transform_iterator<I, F>)
 ) operator-(const transform_iterator<I, F>& i,
           typename transform_iterator<I, F>::difference_type n) {
-    return transform_iterator<I, F>(i.base() - n, i.last(), i.function());
+    return transform_iterator<I, F>(i.base() - n, i.function());
 }
 
 /// Returns the distance between two iterators.
@@ -1002,10 +1006,10 @@ public:
     ) : _first(first), _last(last), _op(op) {}
 
     /// Returns the beginning to the container.
-    const_iterator begin() const { return const_iterator(_first, _last, _op); }
+    const_iterator begin() const { return const_iterator(_first, _op); }
 
     /// Returns the end to the container.
-    const_iterator end()   const { return const_iterator(_last,  _last, _op); }
+    const_iterator end()   const { return const_iterator(_last,  _op); }
 
 private:
     InputIterator _first;
