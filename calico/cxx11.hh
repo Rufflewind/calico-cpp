@@ -231,6 +231,7 @@
 
 // For documentation purposes
 #ifdef FZ_DOC_ONLY
+#define HAVE_UINT16
 #define HAVE_UINT32
 #define HAVE_UINT64
 #endif
@@ -249,11 +250,15 @@
 #ifdef HAVE_CSTDINT
 #   include <cstdint>
 #   define HAVE_UINT_FAST16 std::uint_fast16_t
+#   define HAVE_UINT16 std::uint16_t
 #   define HAVE_UINT32 std::uint32_t
 #   define HAVE_UINT64 std::uint64_t
 #elif defined(HAVE_STDINT_H)
 #   include <stdint.h>
 #   define HAVE_UINT_FAST16 ::uint_fast16_t
+#   ifdef INT16_MAX
+#       define HAVE_UINT32 ::uint16_t
+#   endif
 #   ifdef INT32_MAX
 #       define HAVE_UINT32 ::uint32_t
 #   endif
@@ -262,6 +267,15 @@
 #   endif
 #else
 #   define HAVE_UINT_FAST16 unsigned
+#   if ULLONG_MAX == 0xffff
+#       define HAVE_UINT16 unsigned long long
+#   elif ULONG_MAX == 0xffff
+#       define HAVE_UINT16 unsigned long
+#   elif UINT_MAX == 0xffff
+#       define HAVE_UINT16 unsigned
+#   elif USHORT_MAX == 0xffff
+#       define HAVE_UINT16 unsigned short
+#   endif
 #   if ULLONG_MAX == 0xffffffff
 #       define HAVE_UINT32 unsigned long long
 #   elif ULONG_MAX == 0xffffffff
@@ -292,6 +306,11 @@ namespace fz {
 
 /// Fastest unsigned integer type with a width of at least 16 bits.
 typedef HAVE_UINT_FAST16 uint_fast16_t;
+
+#ifdef HAVE_UINT16
+/// 16-bit unsigned integer type.
+typedef HAVE_UINT16 uint16_t;
+#endif
 
 #ifdef HAVE_UINT32
 /// 32-bit unsigned integer type.
