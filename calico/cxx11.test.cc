@@ -64,4 +64,4 @@ void test() {
     convertible_test(const volatile void, const void);
 }
 
-int main() {}
+int main() { return 0; }

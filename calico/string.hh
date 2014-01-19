@@ -1,9 +1,12 @@
 #ifndef FZ_STRING_HH
 #define FZ_STRING_HH
+#include <cstddef>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
-#include "cxx11.hh"
+#include <vector>
+extern "C" int snprintf(char*, std::size_t, const char*, ...);
 namespace fz {
 
 /// @addtogroup FzString Strings
@@ -12,8 +15,8 @@ namespace fz {
 ///
 /// @{
 
-/// Returns the same string.
-inline const std::string& to_string(const std::string& s) { return s; }
+/// Returns a copy of the same string.
+inline std::string to_string(const std::string& s) { return s; }
 
 /// Converts a null-terminated string to an `std::string`.
 inline std::string to_string(const char* s) { return s; }
@@ -172,7 +175,37 @@ inline null_terminated_iterator<T> null_terminated_end(T* ptr) {
     return null_terminated_iterator<T>(ptr, true);
 }
 
-/// @}
+/// Returns a formatted string similar to `sprintf` but without all the hassle
+/// of memory management.
+///
+/// **Warning:** Failing to provide sufficient arguments or arguments of the
+/// right type will result in undefined behavior since this function is built
+/// on top of `snprintf`.
+template<class ...T>
+std::string format_str(const char* format, T&&... t) {
+    using namespace std;
+    // Since "modifying" the last terminating null character may be undefined
+    // behavior, we're going to start off with an extra character and the
+    // remove it later.  See: http://stackoverflow.com/questions/12740403
+    int n = snprintf(0, 0, format, forward<T>(t)...) + 1;
+    if (n <= 0)
+        throw runtime_error("fz::format_str: 1st snprintf failed");
+    string s(n, 0);
+    n = snprintf(&s[0], n, format, forward<T>(t)...);
+    if (n < 0)
+        throw runtime_error("fz::format_str: 2nd snprintf failed");
+    s.resize(n);
+    return s;
+}
 
+/// Returns a copy of the given string as a vector of characters.  This
+/// function can be used to obtain a copy of the string's character buffer.
+template<class T>
+std::vector<T> str_to_vector(const std::basic_string<T>& s) {
+    const T* begin = s.c_str();
+    return std::vector<T>(begin, begin + s.size() + 1);
+}
+
+/// @}
 }
 #endif

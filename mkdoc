@@ -1,9 +1,0 @@
-#!/bin/sh
-set -e
-doxygen
-pushd doc
-git add -u
-git add .
-git commit --amend -m "Generate docs"
-git push origin gh-pages --force
-popd

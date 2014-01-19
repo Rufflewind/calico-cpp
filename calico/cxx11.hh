@@ -210,7 +210,7 @@
 
 // Defined if `to_string` is available.
 #if defined(HAVE_CXX11)                         \
-    || gcc_version(4, 8)
+    || (gcc_version(4, 8) && !defined(__CYGWIN__))
 #   define HAVE_STRING_HELPERS
 #endif
 
