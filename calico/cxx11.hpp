@@ -1,21 +1,11 @@
-#ifndef FZ_CXX11_HH
-#define FZ_CXX11_HH
-#include <climits>
-#include <cstddef>
-#include <iterator>
-#include <sstream>
-#include <string>
-#include <utility>
+#ifndef GTFNMTKLNRYHKAYKFJVL
+#define GTFNMTKLNRYHKAYKFJVL
 /// @file
 ///
 /// This header provides some basic features from C++11 and a few rudimentary
-/// feature-testing macros.
+/// feature-testing macros.  For details, see @ref CalicoCxx11.
 ///
-/// The feature tests (or more accurately, *version* tests) in this header are
-/// incomplete and do not support every compiler.  Full feature testing is
-/// best provided by actual build tools.
-
-/// @defgroup FzCxx11 C++11
+/// @defgroup CalicoCxx11 C++11 support
 ///
 /// Implementation of various features from C++11 for compatibility purposes.
 ///
@@ -24,6 +14,10 @@
 /// properly documented (which is often not the case).  Note that despite what
 /// the standard says, the `__cplusplus` macro is not be trusted as compilers
 /// can and will lie about it (e.g. Clang).
+///
+/// The feature tests (or more accurately, *version* tests) are incomplete and
+/// do not support every compiler.  Full feature testing is best provided by
+/// actual build tools.
 ///
 /// If the compiler does in fact support *every* feature of C++11 correctly
 /// (quite unlikely) then feel free to define the `HAVE_CXX11` macro;
@@ -45,7 +39,12 @@
 /// For unsupported compilers, the preferable approach is to add specific
 /// feature tests into the build system (e.g. Autoconf, CMake) and then define
 /// the appropriate `HAVE_`... macros.
-
+#include <climits>
+#include <cstddef>
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <utility>
 
 // Defined if *all* C++11 features are supported.
 #if __cplusplus >= 201103L \
@@ -92,9 +91,9 @@
 #endif
 #if defined(HAVE_CXX1Y)                         \
     || clang_feature(cxx_relaxed_constexpr)
-#   define FZ_CONSTEXPR_1Y constexpr
+#   define CALICO_CONSTEXPR_1Y constexpr
 #else
-#   define FZ_CONSTEXPR_1Y
+#   define CALICO_CONSTEXPR_1Y
 #endif
 
 // Defined if type inspection (`decltype`) is supported.
@@ -230,7 +229,7 @@
 #undef glib_date
 
 // For documentation purposes
-#ifdef FZ_DOC_ONLY
+#ifdef CALICO_DOC_ONLY
 #define HAVE_UINT16
 #define HAVE_UINT32
 #define HAVE_UINT64
@@ -299,9 +298,9 @@
 #   endif
 #endif
 
-namespace fz {
+namespace cal {
 
-/// @addtogroup FzCxx11
+/// @addtogroup CalicoCxx11
 /// @{
 
 /// Fastest unsigned integer type with a width of at least 16 bits.
@@ -332,10 +331,11 @@ typedef HAVE_UINT64 uint64_t;
 // ======================
 
 #if !defined(HAVE_STATIC_ASSERT) && !defined(static_assert)
-#   define FZ_STATIC_ASSERT_MSG(line) FZ_STATIC_ASSERT_MSG2(line)
-#   define FZ_STATIC_ASSERT_MSG2(line) static_assertion_failed_at_line_ ## line
+#   define CALICO_STATIC_ASSERT_MSG(line) CALICO_STATIC_ASSERT_MSG2(line)
+#   define CALICO_STATIC_ASSERT_MSG2(line) \
+        static_assertion_failed_at_line_ ## line
 //
-/// @addtogroup FzUtility
+/// @addtogroup CalicoUtility
 /// @{
 //
 /// @def static_assert(expression, message)
@@ -349,7 +349,7 @@ typedef HAVE_UINT64 uint64_t;
 /// @}
 //
 #   define static_assert(expression, message)                           \
-        enum { FZ_STATIC_ASSERT_MSG(__LINE__) = 1 / (int) (expression) }
+        enum { CALICO_STATIC_ASSERT_MSG(__LINE__) = 1 / (int) (expression) }
 #endif
 
 // ---------------------------------------------------------------------------
@@ -361,10 +361,10 @@ typedef HAVE_UINT64 uint64_t;
 #   include <type_traits>
 #endif
 
-/// Namespace `fz`.
-namespace fz {
+/// Namespace `cal`.
+namespace cal {
 
-/// @defgroup FzUtility Utilities
+/// @defgroup CalicoUtility Utilities
 ///
 /// Miscellaneous utility functions.
 ///
@@ -386,7 +386,7 @@ struct match_cv<T, const volatile U> { typedef const volatile T type; };
 
 /// @}
 
-/// @addtogroup FzCxx11
+/// @addtogroup CalicoCxx11
 /// @{
 
 #ifdef HAVE_TYPE_TRAITS
@@ -555,7 +555,7 @@ template<class T> struct remove_reference<T&&> { typedef T type; };
 
 /// @}
 
-/// @addtogroup FzUtility
+/// @addtogroup CalicoUtility
 /// @{
 
 // ---------------------------------------------------------------------------
@@ -570,85 +570,85 @@ template<class>   struct unparenthesize_type;
 template<class T> struct unparenthesize_type<void(T)> { typedef T type;    };
 template<>        struct unparenthesize_type<void()>  { typedef void type; };
 
-/// @def FZ_UNPARENS(type_expr)
+/// @def CALICO_UNPARENS(type_expr)
 ///
 /// Removes the parentheses around a type expression.
-#ifndef FZ_DOC_ONLY
-#   define FZ_UNPARENS(type_expr)                                       \
-        typename ::fz::unparenthesize_type<void(type_expr)>::type
+#ifndef CALICO_DOC_ONLY
+#   define CALICO_UNPARENS(type_expr)                                       \
+        typename ::cal::unparenthesize_type<void(type_expr)>::type
 #else
-#   define FZ_UNPARENS(type_expr) auto
+#   define CALICO_UNPARENS(type_expr) auto
 #endif
 
-/// @def FZ_VALID_VAL(expr)
+/// @def CALICO_VALID_VAL(expr)
 ///
 /// Constructs an unevaluated context for the given expression to test the its
 /// validity.  Returns the `return_value` if `value_expr` is valid; causes a
 /// compiler error otherwise.  The result can be used to perform SFINAE tests.
-#ifndef FZ_DOC_ONLY
-#   define FZ_VALID_VAL(value_expr, return_value)               \
+#ifndef CALICO_DOC_ONLY
+#   define CALICO_VALID_VAL(value_expr, return_value)               \
         (sizeof(value_expr, 0) ? return_value : return_value)
 #else
-#   define FZ_VALID_VAL(value_expr, return_value) return_value
+#   define CALICO_VALID_VAL(value_expr, return_value) return_value
 #endif
 
-/// @def FZ_VALID_TYPE(type_expr)
+/// @def CALICO_VALID_TYPE(type_expr)
 ///
 /// Returns the `return_type` if `type_expr` is a valid type; causes a
 /// compiler error otherwise.  The result can be used to perform SFINAE tests.
-#ifndef FZ_DOC_ONLY
-#   define FZ_VALID_TYPE(type_expr, return_type)                        \
-        typename ::fz::enable_if<                                       \
-            FZ_VALID_VAL(fz::declval<FZ_UNPARENS(type_expr)>(), true),  \
-            FZ_UNPARENS(return_type)                                    \
-        >::type
+#ifndef CALICO_DOC_ONLY
+#   define CALICO_VALID_TYPE(type_expr, return_type)                        \
+      typename ::cal::enable_if<                                            \
+        CALICO_VALID_VAL(cal::declval<CALICO_UNPARENS(type_expr)>(), true), \
+        CALICO_UNPARENS(return_type)                                        \
+      >::type
 #else
-#   define FZ_VALID_TYPE(type_expr, return_type) return_type
+#   define CALICO_VALID_TYPE(type_expr, return_type) return_type
 #endif
 
-/// @def FZ_DECLTYPE(expr, fallback_type)
+/// @def CALICO_DECLTYPE(expr, fallback_type)
 ///
 /// Equivalent to `decltype(expr)` if available; otherwise, defaults to the
 /// `fallback_type` provided that the expression is valid (the macro uses an
 /// `enable_if` check to do this).
-#if defined(HAVE_DECLTYPE) || defined(FZ_DOC_ONLY)
-#   define FZ_DECLTYPE(expr, fallback_type) decltype(expr)
+#if defined(HAVE_DECLTYPE) || defined(CALICO_DOC_ONLY)
+#   define CALICO_DECLTYPE(expr, fallback_type) decltype(expr)
 #else
-#   define FZ_DECLTYPE(expr, fallback_type)     \
-        typename ::fz::enable_if<               \
-            FZ_VALID_VAL(expr, true),           \
-            FZ_UNPARENS(fallback_type)          \
+#   define CALICO_DECLTYPE(expr, fallback_type)     \
+        typename ::cal::enable_if<               \
+            CALICO_VALID_VAL(expr, true),           \
+            CALICO_UNPARENS(fallback_type)          \
         >::type
 #endif
 
 // Doxygen does not handle decltype properly so it must be hidden
-#ifdef FZ_DOC_ONLY
+#ifdef CALICO_DOC_ONLY
 #   define decltype(expr) auto
 #endif
 
-/// @def FZ_ENABLE_IF(condition, type_expr)
+/// @def CALICO_ENABLE_IF(condition, type_expr)
 ///
 /// Convenience macro for performing `enable_if` tests.
-#ifndef FZ_DOC_ONLY
-#   define FZ_ENABLE_IF(condition, type_expr)                                \
-        typename ::fz::enable_if<(condition), FZ_UNPARENS(type_expr)>::type
+#ifndef CALICO_DOC_ONLY
+#   define CALICO_ENABLE_IF(condition, type_expr)                            \
+      typename ::cal::enable_if<(condition), CALICO_UNPARENS(type_expr)>::type
 #else
-#   define FZ_ENABLE_IF(condition, type_expr) type_expr
+#   define CALICO_ENABLE_IF(condition, type_expr) type_expr
 #endif
 
-/// @def FZ_ENABLE_IF_P(condition)
+/// @def CALICO_ENABLE_IF_P(condition)
 ///
 /// Convenience macro for performing `enable_if` tests in the parameter list.
 #ifndef DOC_ONLY
-#   define FZ_ENABLE_IF_P(condition)                    \
-        , typename ::fz::enable_if<(condition)>::type* = 0
+#   define CALICO_ENABLE_IF_P(condition)                    \
+      , typename ::cal::enable_if<(condition)>::type* = 0
 #else
-#   define FZ_ENABLE_IF_P(condition)
+#   define CALICO_ENABLE_IF_P(condition)
 #endif
 
 /// @}
 
-/// @addtogroup FzCxx11
+/// @addtogroup CalicoCxx11
 /// @{
 
 // ---------------------------------------------------------------------------
@@ -672,7 +672,7 @@ template<class T>
 T&& declval() noexcept;
 #endif
 
-#if defined(HAVE_RVALUE) || defined(FZ_DOC_ONLY)
+#if defined(HAVE_RVALUE) || defined(CALICO_DOC_ONLY)
 /// Perfectly forwards the given argument.
 template<class T> inline constexpr
 T&& forward(typename remove_reference<T>::type&& t) noexcept {
@@ -686,7 +686,7 @@ T&& forward(typename remove_reference<T>::type& t) noexcept {
 }
 
 /// Converts an rvalue reference into an xvalue.
-template<class T> inline FZ_CONSTEXPR_1Y
+template<class T> inline CALICO_CONSTEXPR_1Y
 typename remove_reference<T>::type&& move(T&& t) noexcept {
     static_cast<typename remove_reference<T>::type&&>(t);
 }
@@ -907,44 +907,44 @@ template<class, class = void> struct result_of {};
 #ifdef HAVE_DECLTYPE
 #ifdef HAVE_VARIADIC_TEMPLATE
 template<class F, class... T> struct result_of<F(T...),
-    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>()...)), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()(declval<T>()...)), void)> {
     typedef       decltype(declval<F>()(declval<T>()...)) type;
 };
 #else
 template<class F>
 struct result_of<F(),
-    FZ_VALID_TYPE(decltype(declval<F>()()), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()()), void)> {
     typedef       decltype(declval<F>()()) type;
 };
 template<class F, class T>
 struct result_of<F(T),
-    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>())), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()(declval<T>())), void)> {
     typedef       decltype(declval<F>()(declval<T>())) type;
 };
 template<class F, class T, class U>
 struct result_of<F(T, U),
-    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>())), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>())), void)> {
     typedef       decltype(declval<F>()(declval<T>(), declval<U>())) type;
 };
 template<class F, class T, class U, class V>
 struct result_of<F(T, U, V),
-    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
-                                        declval<V>())), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
+                                          declval<V>())), void)> {
     typedef       decltype(declval<F>()(declval<T>(), declval<U>(),
                                         declval<V>())) type;
 };
 template<class F, class T, class U, class V, class W>
 struct result_of<F(T, U, V, W),
-    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
-                                        declval<V>(), declval<W>())), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
+                                          declval<V>(), declval<W>())), void)> {
     typedef       decltype(declval<F>()(declval<T>(), declval<U>(),
                                         declval<V>(), declval<W>())) type;
 };
 template<class F, class T, class U, class V, class W, class X>
 struct result_of<F(T, U, V, W, X),
-    FZ_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
-                                        declval<V>(), declval<W>(),
-                                        declval<X>())), void)> {
+  CALICO_VALID_TYPE(decltype(declval<F>()(declval<T>(), declval<U>(),
+                                          declval<V>(), declval<W>(),
+                                          declval<X>())), void)> {
     typedef       decltype(declval<F>()(declval<T>(), declval<U>(),
                                         declval<V>(), declval<W>(),
                                         declval<X>())) type;
@@ -954,38 +954,38 @@ struct result_of<F(T, U, V, W, X),
 #ifdef HAVE_VARIADIC_TEMPLATE
 template<class F, class... T>
 struct result_of<F(T...),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 #else
 template<class F>
 struct result_of<F(),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 template<class F, class T>
 struct result_of<F(T),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 template<class F, class T, class U>
 struct result_of<F(T, U),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 template<class F, class T, class U, class V>
 struct result_of<F(T, U, V),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 template<class F, class T, class U, class V, class W>
 struct result_of<F(T, U, V, W),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 template<class F, class T, class U, class V, class W, class X>
 struct result_of<F(T, U, V, W, X),
-    FZ_VALID_TYPE(typename F::result_type, void)> {
+    CALICO_VALID_TYPE(typename F::result_type, void)> {
     typedef typename F::result_type type;
 };
 #endif
@@ -1149,12 +1149,14 @@ template<class> struct get_iterator;
 
 /// Returns an iterator to the beginning of a container.
 template<class C> inline
-FZ_DECLTYPE(declval<C&>().begin(),       typename get_iterator<C&>::type)
+CALICO_DECLTYPE(declval<C&>().begin(),
+                typename get_iterator<C&>::type)
 begin(C& c)          { return c.begin(); }
 
 /// Returns an iterator to the beginning of a container.
 template<class C> inline
-FZ_DECLTYPE(declval<const C&>().begin(), typename get_iterator<const C&>::type)
+CALICO_DECLTYPE(declval<const C&>().begin(),
+                typename get_iterator<const C&>::type)
 begin(const C& c)    { return c.begin(); }
 
 /// Returns an iterator to the beginning of an array.
@@ -1163,17 +1165,20 @@ begin(T (&array)[N]) { return array;     }
 
 /// Returns a const-qualified iterator to the beginning of a container.
 template<class C> inline
-FZ_DECLTYPE(begin(declval<const C&>()), typename get_iterator<const C&>::type)
+CALICO_DECLTYPE(begin(declval<const C&>()),
+                typename get_iterator<const C&>::type)
 cbegin(const C& c)   { return begin(c);  }
 
 /// Returns an iterator to the end of a container.
 template<class C> inline
-FZ_DECLTYPE(declval<C&>().end(),        typename get_iterator<C&>::type)
+CALICO_DECLTYPE(declval<C&>().end(),
+                typename get_iterator<C&>::type)
 end(C& c)            { return c.end();   }
 
 /// Returns an iterator to the end of a container.
 template<class C> inline
-FZ_DECLTYPE(declval<const C&>().end(),  typename get_iterator<const C&>::type)
+CALICO_DECLTYPE(declval<const C&>().end(),
+                typename get_iterator<const C&>::type)
 end(const C& c)      { return c.end();   }
 
 /// Returns an iterator to the end of an array.
@@ -1182,7 +1187,8 @@ end(T (&array)[N])   { return array + N; }
 
 /// Returns a const-qualified iterator to the end of a container.
 template<class C> inline
-FZ_DECLTYPE(end(declval<const C&>()),   typename get_iterator<const C&>::type)
+CALICO_DECLTYPE(end(declval<const C&>()),
+                typename get_iterator<const C&>::type)
 cend(const C& c)     { return end(c);    }
 
 #endif // HAVE_BEGIN_END
@@ -1194,57 +1200,58 @@ cend(const C& c)     { return end(c);    }
 // Miscellaneous
 // =============
 
-/// @addtogroup FzUtility
+/// @addtogroup CalicoUtility
 /// @{
 
 template<class T>
 inline std::string to_string(const T& x); // Defined earlier
 
 namespace _priv {
-template<class, class = void> struct has_const_iterator : false_type {};
+template<class, class = void> struct has_const_iterator  : false_type {};
 template<class T>             struct has_const_iterator<T,
-    FZ_VALID_TYPE(typename T::const_iterator, void)>    : true_type  {};
-template<class, class = void> struct has_iterator       : false_type {};
+    CALICO_VALID_TYPE(typename T::const_iterator, void)> : true_type  {};
+template<class, class = void> struct has_iterator        : false_type {};
 template<class T>             struct has_iterator<T,
-    FZ_VALID_TYPE(typename T::iterator, void)>          : true_type  {};
+    CALICO_VALID_TYPE(typename T::iterator, void)>       : true_type  {};
 template<class, class = void> struct get_iterator2 {};
 template<class T>             struct get_iterator2<T,
-    FZ_ENABLE_IF(is_array<T>::value, void)> {
+    CALICO_ENABLE_IF(is_array<T>::value, void)> {
     typedef typename remove_extent<T>::type type;
 };
 template<class T>             struct get_iterator2<T,
-    FZ_ENABLE_IF(has_const_iterator<T>::value &&
-                 has_iterator<T>::value, void)> {
+    CALICO_ENABLE_IF(has_const_iterator<T>::value &&
+                     has_iterator<T>::value, void)> {
     typedef typename conditional<
         is_const<T>::value,
         typename T::const_iterator,
         typename T::iterator
     >::type type;
 };
-template<class T>             struct get_iterator2<T,
-    FZ_ENABLE_IF(has_const_iterator<T>::value &&
-                 !has_iterator<T>::value, void)> {
+template<class T> struct get_iterator2<T,
+    CALICO_ENABLE_IF(has_const_iterator<T>::value &&
+                     !has_iterator<T>::value, void)> {
     typedef typename T::const_iterator type;
 };
-template<class T>             struct get_iterator2<T,
-    FZ_ENABLE_IF(!has_const_iterator<T>::value &&
-                 has_iterator<T>::value, void)> {
+template<class T> struct get_iterator2<T,
+    CALICO_ENABLE_IF(!has_const_iterator<T>::value &&
+                     has_iterator<T>::value, void)> {
     typedef typename T::iterator type;
 };
-template<class It>            struct get_iterator2<
-    std::pair<It, It>, FZ_VALID_TYPE(typename It::iterator_category, void)> {
+template<class It> struct get_iterator2<
+    std::pair<It, It>,
+    CALICO_VALID_TYPE(typename It::iterator_category, void)> {
     typedef It type;
 };
 template<class, class = void> struct get_iterator {};
 template<class T>             struct get_iterator<T,
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(
             begin(declval<T>()),
             typename get_iterator2<T>::type
         )),
         void
     )> {
-    typedef FZ_DECLTYPE(
+    typedef CALICO_DECLTYPE(
         begin(declval<T>()),
         typename get_iterator2<T>::type
     ) type;
@@ -1260,36 +1267,33 @@ struct valid_call : false_type {};
 #ifdef HAVE_VARIADIC_TEMPLATE
 template<class F, class... T>
 struct valid_call<F(T...), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(declval<T>()...), 1)
-    >::type> : true_type {};
+    CALICO_VALID_VAL(declval<F>()(declval<T>()...), 1)>::type> : true_type {};
 #else
 template<class F>
 struct valid_call<F(), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(), 1)
-    >::type> : true_type {};
+    CALICO_VALID_VAL(declval<F>()(), 1)>::type> : true_type {};
 template<class F, class T>
 struct valid_call<F(T), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(declval<T>()), 1)
-    >::type> : true_type {};
+    CALICO_VALID_VAL(declval<F>()(declval<T>()), 1)>::type> : true_type {};
 template<class F, class T, class U>
 struct valid_call<F(T, U), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>()), 1)
-    >::type> : true_type {};
+    CALICO_VALID_VAL(declval<F>()(declval<T>(), declval<U>()), 1)
+  >::type> : true_type {};
 template<class F, class T, class U, class V>
 struct valid_call<F(T, U, V), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>(),
+    CALICO_VALID_VAL(declval<F>()(declval<T>(), declval<U>(),
                                   declval<V>()), 1)
-    >::type> : true_type {};
+  >::type> : true_type {};
 template<class F, class T, class U, class V, class W>
 struct valid_call<F(T, U, V, W), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>(),
+    CALICO_VALID_VAL(declval<F>()(declval<T>(), declval<U>(),
                                   declval<V>(), declval<W>()), 1)
-    >::type> : true_type {};
+  >::type> : true_type {};
 template<class F, class T, class U, class V, class W, class X>
 struct valid_call<F(T, U, V, W, X), typename enable_if<
-        FZ_VALID_VAL(declval<F>()(declval<T>(), declval<U>(), declval<V>(),
+    CALICO_VALID_VAL(declval<F>()(declval<T>(), declval<U>(), declval<V>(),
                                   declval<W>(), declval<X>()), 1)
-    >::type> : true_type {};
+  >::type> : true_type {};
 #endif
 }
 /// Returns whether the function call is valid.  When the template parameter
@@ -1300,11 +1304,11 @@ template<class T> struct valid_call : _priv::valid_call<T> {};
 
 /// @}
 
-} // namespace fz
+} // namespace cal
 
 namespace std {
 
-/// @addtogroup FzCxx11
+/// @addtogroup CalicoCxx11
 /// @{
 
 /// Hash function declaration (no specializations provided).
@@ -1313,19 +1317,19 @@ struct hash;
 
 /// @}
 
-/// @addtogroup FzUtility
+/// @addtogroup CalicoUtility
 /// @{
 
 /// Returns the first item in an iterator pair.
 template<class Iterator> inline
-FZ_VALID_TYPE(
+CALICO_VALID_TYPE(
     typename std::iterator_traits<Iterator>::iterator_category,
     Iterator
 ) begin(const std::pair<Iterator, Iterator>& p) { return p.first;  }
 
 /// Returns the second item in an iterator pair.
 template<class Iterator> inline
-FZ_VALID_TYPE(
+CALICO_VALID_TYPE(
     typename std::iterator_traits<Iterator>::iterator_category,
     Iterator
 ) end(const std::pair<Iterator, Iterator>& p)   { return p.second; }

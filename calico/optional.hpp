@@ -1,8 +1,13 @@
-#ifndef FZ_OPTIONAL_HH
-#define FZ_OPTIONAL_HH
+#ifndef FEFMEVQFHPXPNWYXJLVS
+#define FEFMEVQFHPXPNWYXJLVS
+/// @file
+///
+/// Implementation of the `std::optional` type.  See @ref CalicoCxx11.
+///
 #include <stdexcept>
-#include "cxx11.hh"
-namespace fz {
+namespace cal {
+/// @addtogroup CalicoCxx11
+/// @{
 
 /// A type that represents a missing value for `optional`.
 class nullopt_t {};
@@ -79,5 +84,6 @@ private:
     bool _engaged;
 };
 
+/// @}
 }
 #endif

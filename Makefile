@@ -4,20 +4,28 @@ CXX03=--std=c++03
 CXX11=--std=c++11
 DL_NAME=snprintf_2.2
 DL_URL=http://www.ijs.si/software/snprintf/$(DL_NAME).tar.gz
+CXXFLAGS=$(CXX11) -Wall -I.
 CCFLAGS_EXT=-O3 # For external libraries
 
-all: doc test
+all: test doc
+
+clean:
+	rm -r dist
 
 test: \
   $(TMP)/libsnprintf.a \
-  calico/string.test.cc \
-  calico/iterator.test.cc
+  test/cxx11.cpp \
+  test/iterator.cpp \
+  test/lens.cpp \
+  test/string.cpp
 	mkdir -p $(TMP)
-	$(CXX) $(CXX11) -o /dev/null -c calico/cxx11.test.cc
-	$(CXX) $(CXX11) -o $(TMP)/test \
-	     $(TMP)/libsnprintf.a calico/string.test.cc \
+	$(CXX) $(CXXFLAGS) -o /dev/null -c test/cxx11.cpp
+	$(CXX) $(CXXFLAGS) -o $(TMP)/test test/iterator.cpp \
 	  && $(TMP)/test
-	$(CXX) $(CXX11) -o $(TMP)/test calico/iterator.test.cc \
+	$(CXX) $(CXXFLAGS) -o $(TMP)/test \
+	     $(TMP)/libsnprintf.a test/string.cpp \
+	  && $(TMP)/test
+	$(CXX) $(CXXFLAGS) -o $(TMP)/test test/lens.cpp \
 	  && $(TMP)/test
 
 $(TMP)/libsnprintf.a:
@@ -46,4 +54,4 @@ $(DOC)/.git/config:
 	       git@github.com:Rufflewind/calico.git \
 	  && git checkout gh-pages
 
-.PHONY: doc test
+.PHONY: clean doc test

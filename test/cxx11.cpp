@@ -1,7 +1,7 @@
 #undef _MSC_VER
 //#define HAVE_STATIC_ASSERT
-#include "cxx11.hh"
-using namespace fz;
+#include <calico/cxx11.hpp>
+using namespace cal;
 
 struct Abstract { virtual ~Abstract() = 0; };
 struct Concrete {};

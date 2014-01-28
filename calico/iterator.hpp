@@ -1,20 +1,24 @@
-#ifndef FZ_ITERATOR_HH
-#define FZ_ITERATOR_HH
+#ifndef JWDCQBSMQKBXXFZEIVNU
+#define JWDCQBSMQKBXXFZEIVNU
+/// @file
+///
+/// Some utility related to iterators.
+///
 #include <iterator>
 #include <stdexcept>
-#include "cxx11.hh"
-namespace fz {
+#include "cxx11.hpp"
+namespace cal {
 namespace _priv {
 
 // A proxy object that behaves like a pointer.
 template<class Ref>
-class proxy_pointer {
-    Ref _r;
-public:
+struct proxy_pointer {
     explicit proxy_pointer(Ref& r) : _r(r) {}
     Ref* operator->() const { return addressof(_r); }
     Ref operator*() const { return _r; }
     operator Ref*() const { return addressof(_r); }
+private:
+    Ref _r;
 };
 
 // Constructs from a given reference or proxy-reference type to `T` a pointer
@@ -32,15 +36,9 @@ struct reference_to_pointer<T, T&> {
 
 }
 
-/// @addtogroup FzIterator Iterators
+/// A base type for implementing input iterators.
 ///
-/// Some utility related to iterators.
-///
-/// @{
-
-/// A base class for implementing input iterators.
-///
-/// The derived class is should implement the following operations:
+/// The derived type is should implement the following operations:
 ///
 /// ~~~{.cpp}
 ///     bool operator==(const Derived&) const;  // optional
@@ -54,9 +52,7 @@ struct reference_to_pointer<T, T&> {
 ///   itself.
 ///
 template<class Derived, class T = Derived, class Reference = T&>
-class input_iterator_base {
-    typedef _priv::reference_to_pointer<T, Reference> _pointer;
-public:
+struct input_iterator_base {
 
     /// Difference type.
     typedef std::ptrdiff_t difference_type;
@@ -69,6 +65,10 @@ public:
 
     /// Value type.
     typedef T value_type;
+
+private:
+    typedef _priv::reference_to_pointer<T, Reference> _pointer;
+public:
 
     /// Pointer type.
     typedef typename _pointer::type pointer;
@@ -101,12 +101,12 @@ protected:
 };
 
 template<class, class>
-class counted_iterator;
+struct counted_iterator;
 namespace _priv {
 // Can't think of a better way to do this
 template<class, class = void> struct difference_type {};
 template<class I>             struct difference_type<I,
-    FZ_VALID_TYPE(typename I::iterator_category, void)
+    CALICO_VALID_TYPE(typename I::iterator_category, void)
 > { typedef typename std::iterator_traits<I>::difference_type type; };
 }
 
@@ -119,8 +119,7 @@ template<class I>             struct difference_type<I,
 template<class Iterator,
          class Distance =
              typename std::iterator_traits<Iterator>::difference_type>
-class counted_iterator {
-public:
+struct counted_iterator {
 
     /// Underlying iterator type.
     typedef Iterator iterator_type;
@@ -223,126 +222,126 @@ private:
 
 /// Compares the underlying iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() == declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() == declval<J>(), bool)
 operator==(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() == j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() == declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() == declval<J>(), bool)
 operator==(const I& i, const counted_iterator<J, D>& j) {
     return i == j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() == declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() == declval<J>(), bool)
 operator==(const counted_iterator<I, D>& i, const J& j) {
     return i.base() == j;
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() != declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() != declval<J>(), bool)
 operator!=(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() != j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() != declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() != declval<J>(), bool)
 operator!=(const I& i, const counted_iterator<J, D>& j) {
     return i != j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() != declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() != declval<J>(), bool)
 operator!=(const counted_iterator<I, D>& i, const J& j) {
     return i.base() != j;
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() <= declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() <= declval<J>(), bool)
 operator<=(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() <= j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() <= declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() <= declval<J>(), bool)
 operator<=(const I& i, const counted_iterator<J, D>& j) {
     return i <= j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() <= declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() <= declval<J>(), bool)
 operator<=(const counted_iterator<I, D>& i, const J& j) {
     return i.base() <= j;
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() >= declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() >= declval<J>(), bool)
 operator>=(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() >= j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() >= declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() >= declval<J>(), bool)
 operator>=(const I& i, const counted_iterator<J, D>& j) {
     return i >= j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() >= declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() >= declval<J>(), bool)
 operator>=(const counted_iterator<I, D>& i, const J& j) {
     return i.base() >= j;
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() < declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() < declval<J>(), bool)
 operator<(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() < j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() < declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() < declval<J>(), bool)
 operator<(const I& i, const counted_iterator<J, D>& j) {
     return i < j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() < declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() < declval<J>(), bool)
 operator<(const counted_iterator<I, D>& i, const J& j) {
     return i.base() < j;
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() > declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() > declval<J>(), bool)
 operator>(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() > j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() > declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() > declval<J>(), bool)
 operator>(const I& i, const counted_iterator<J, D>& j) {
     return i > j.base();
 }
 
 /// Compares the underlying iterators.
 template<class I, class J, class D> inline
-FZ_DECLTYPE(declval<I>() > declval<J>(), bool)
+CALICO_DECLTYPE(declval<I>() > declval<J>(), bool)
 operator>(const counted_iterator<I, D>& i, const J& j) {
     return i.base() > j;
 }
@@ -352,7 +351,7 @@ operator>(const counted_iterator<I, D>& i, const J& j) {
 /// Returns an iterator in which the underlying iterator and the counter
 /// are both advanced by `n`.
 template<class I, class D, class N> inline
-FZ_DECLTYPE(
+CALICO_DECLTYPE(
     (counted_iterator<I, D>(
         declval<I>() + declval<N>(),
         declval<D>() + declval<N>()
@@ -364,7 +363,7 @@ FZ_DECLTYPE(
 
 /// Returns an iterator advanced by the given number of steps.
 template<class I, class D, class N> inline
-FZ_DECLTYPE(declval<I>() + declval<N>(), (counted_iterator<I, D>))
+CALICO_DECLTYPE(declval<I>() + declval<N>(), (counted_iterator<I, D>))
 operator+(N n, const counted_iterator<I, D>& i) {
     return i + n;
 }
@@ -372,7 +371,7 @@ operator+(N n, const counted_iterator<I, D>& i) {
 /// Returns an iterator in which the underlying iterator and the counter
 /// are both advanced by `n` in reverse.
 template<class I, class D, class N> inline
-FZ_DECLTYPE(
+CALICO_DECLTYPE(
     (counted_iterator<I, D>(
         declval<I>() - declval<N>(),
         declval<D>() - declval<N>()
@@ -384,16 +383,16 @@ FZ_DECLTYPE(
 
 /// Returns the distance between two iterators.
 template<class I, class J, class D, class E> inline
-FZ_DECLTYPE(declval<I>() - declval<J>(), (typename common_type<D, E>::type))
+CALICO_DECLTYPE(declval<I>() - declval<J>(), (typename common_type<D, E>::type))
 operator-(const counted_iterator<I, D>& i, const counted_iterator<J, E>& j) {
     return i.base() - j.base();
 }
 
 /// Returns the distance between two iterators.
 template<class I, class J, class D> inline
-FZ_VALID_TYPE(
+CALICO_VALID_TYPE(
     typename _priv::difference_type<I>::type,
-    (FZ_DECLTYPE(
+    (CALICO_DECLTYPE(
         declval<I>() - declval<J>(),
         (typename common_type<
              typename _priv::difference_type<I>::type,
@@ -406,9 +405,9 @@ FZ_VALID_TYPE(
 
 /// Returns the distance between two iterators.
 template<class I, class J, class D> inline
-FZ_VALID_TYPE(
+CALICO_VALID_TYPE(
     typename _priv::difference_type<J>::type,
-    (FZ_DECLTYPE(
+    (CALICO_DECLTYPE(
         declval<I>() - declval<J>(),
         (typename common_type<
              D,
@@ -439,8 +438,7 @@ counted_iterator<Iterator> iterator_counter(
 /// @tparam Tag   An arbitrary tag used to distinguish between specializations
 ///               of this template.
 template<class T, class Tag = void>
-class integer_iterator {
-public:
+struct integer_iterator {
 
     /// Value type.
     typedef T value_type;
@@ -589,8 +587,7 @@ template<
         typename std::iterator_traits<Iterator>::difference_type
     >::type
 >
-class const_container_base {
-public:
+struct const_container_base {
 
     /// Size type.
     typedef Size size_type;
@@ -639,7 +636,7 @@ public:
 
     /// Returns a reference to the last element in the container (provided
     /// that the container is not empty and the container is bidirectional).
-    FZ_ENABLE_IF(
+    CALICO_ENABLE_IF(
         (is_base_of<
              std::bidirectional_iterator_tag,
              typename std::iterator_traits<const_iterator>::iterator_category
@@ -676,7 +673,7 @@ public:
 
     /// Accesses the element at a given index (if the container supports
     /// random access).
-    FZ_ENABLE_IF(
+    CALICO_ENABLE_IF(
         (is_base_of<
              std::random_access_iterator_tag,
              typename std::iterator_traits<const_iterator>::iterator_category
@@ -693,7 +690,7 @@ public:
 
     /// Accesses the element at a given index (if the container supports
     /// random access).
-    FZ_ENABLE_IF(
+    CALICO_ENABLE_IF(
         (is_base_of<
              std::random_access_iterator_tag,
              typename std::iterator_traits<const_iterator>::iterator_category
@@ -709,17 +706,15 @@ protected:
 };
 
 template<class InputIterator>
-class iterator_range
-    : public const_container_base<
-          iterator_range<InputIterator>,
-          InputIterator> {
-public:
-    iterator_range(const InputIterator& first, const InputIterator& last)
+struct iterator_range
+    : const_container_base<iterator_range<InputIterator>, InputIterator> {
+    typedef InputIterator iterator_type;
+    iterator_range(const iterator_type& first, const iterator_type& last)
         : first(first), last(last) {}
-    InputIterator first;
-    InputIterator last;
-    InputIterator begin() const { return first; }
-    InputIterator end()   const { return last;  }
+    iterator_type first;
+    iterator_type last;
+    iterator_type begin() const { return first; }
+    iterator_type end()   const { return last;  }
 };
 
 template<class InputIterator> inline
@@ -750,8 +745,7 @@ integer_range(const T& begin, const T& end) {
 
 /// An iterator that applies a function to each element.
 template<class InputIterator, class UnaryOperation>
-class transform_iterator {
-public:
+struct transform_iterator {
 
     /// Underlying iterator type.
     typedef InputIterator iterator_type;
@@ -796,8 +790,8 @@ public:
     /// - Underlying iterator must support `begin()`.
     /// - `UnaryOperation` must be default-initializable.
     template<class Container> static
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(iterator_type::begin(declval<Container>()), void)),
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(iterator_type::begin(declval<Container>()), void)),
         transform_iterator
     ) begin(const Container& c) {
         return transform_iterator(iterator_type::begin(c), UnaryOperation());
@@ -809,8 +803,8 @@ public:
     /// - Underlying iterator must support `end()`.
     /// - `UnaryOperation` must be default-initializable.
     template<class Container> static
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(iterator_type::end(declval<Container>()), void)),
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(iterator_type::end(declval<Container>()), void)),
         transform_iterator
     ) end(const Container& c) {
         return transform_iterator(iterator_type::end(c), UnaryOperation());
@@ -842,8 +836,8 @@ public:
     }
 
     /// Pre-decrements the iterator.
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(--declval<iterator_type>(), void)),
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(--declval<iterator_type>(), void)),
         transform_iterator&
     ) operator--() {
         --_it;
@@ -851,8 +845,8 @@ public:
     }
 
     /// Post-decrements the iterator.
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(declval<iterator_type>()--, void)),
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(declval<iterator_type>()--, void)),
         transform_iterator
     ) operator--(int) {
         transform_iterator t = *this;
@@ -861,8 +855,8 @@ public:
     }
 
     /// Advances the iterator by `n`.
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(
             declval<iterator_type>() += declval<difference_type>(),
             void
         )),
@@ -873,8 +867,8 @@ public:
     }
 
     /// Advances the iterator by `n` in reverse.
-    FZ_VALID_TYPE(
-        (FZ_DECLTYPE(
+    CALICO_VALID_TYPE(
+        (CALICO_DECLTYPE(
             declval<iterator_type>() -= declval<difference_type>(),
             void
         )),
@@ -891,7 +885,7 @@ private:
 
 /// Compares the underlying iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(declval<I>() == declval<I>(), bool)
+CALICO_DECLTYPE(declval<I>() == declval<I>(), bool)
 operator==(const transform_iterator<I, F>& i,
            const transform_iterator<I, F>& j) {
     return i.base() == j.base();
@@ -899,16 +893,15 @@ operator==(const transform_iterator<I, F>& i,
 
 /// Compares the underlying iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(declval<I>() != declval<I>(), bool)
+CALICO_DECLTYPE(declval<I>() != declval<I>(), bool)
 operator!=(const transform_iterator<I, F>& i,
            const transform_iterator<I, F>& j) {
     return i.base() != j.base();
 }
 
-
 /// Compares the underlying iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(declval<I>() <= declval<I>(), bool)
+CALICO_DECLTYPE(declval<I>() <= declval<I>(), bool)
 operator<=(const transform_iterator<I, F>& i,
            const transform_iterator<I, F>& j) {
     return i.base() <= j.base();
@@ -916,7 +909,7 @@ operator<=(const transform_iterator<I, F>& i,
 
 /// Compares the underlying iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(declval<I>() >= declval<I>(), bool)
+CALICO_DECLTYPE(declval<I>() >= declval<I>(), bool)
 operator>=(const transform_iterator<I, F>& i,
            const transform_iterator<I, F>& j) {
     return i.base() >= j.base();
@@ -924,7 +917,7 @@ operator>=(const transform_iterator<I, F>& i,
 
 /// Compares the underlying iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(declval<I>() < declval<I>(), bool)
+CALICO_DECLTYPE(declval<I>() < declval<I>(), bool)
 operator<(const transform_iterator<I, F>& i,
           const transform_iterator<I, F>& j) {
     return i.base() < j.base();
@@ -932,7 +925,7 @@ operator<(const transform_iterator<I, F>& i,
 
 /// Compares the underlying iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(declval<I>() > declval<I>(), bool)
+CALICO_DECLTYPE(declval<I>() > declval<I>(), bool)
 operator>(const transform_iterator<I, F>& i,
           const transform_iterator<I, F>& j) {
     return i.base() > j.base();
@@ -940,7 +933,7 @@ operator>(const transform_iterator<I, F>& i,
 
 /// Returns an iterator advanced by `n`.
 template<class I, class F> inline
-FZ_DECLTYPE(
+CALICO_DECLTYPE(
     (transform_iterator<I, F>(
         declval<I>() +
         declval<typename transform_iterator<I, F>::difference_type>(),
@@ -953,7 +946,7 @@ FZ_DECLTYPE(
 
 /// Returns an iterator advanced by `n`.
 template<class I, class F> inline
-FZ_DECLTYPE(
+CALICO_DECLTYPE(
     (declval<transform_iterator<I, F> >() +
      declval<typename transform_iterator<I, F>::difference_type>()),
     (transform_iterator<I, F>)
@@ -962,7 +955,7 @@ FZ_DECLTYPE(
 
 /// Returns an iterator advanced by `n` in reverse.
 template<class I, class F> inline
-FZ_DECLTYPE(
+CALICO_DECLTYPE(
     (transform_iterator<I, F>(
         declval<I>() -
         declval<typename transform_iterator<I, F>::difference_type>(),
@@ -975,7 +968,7 @@ FZ_DECLTYPE(
 
 /// Returns the distance between two iterators.
 template<class I, class F> inline
-FZ_DECLTYPE(
+CALICO_DECLTYPE(
     (declval<I>() - declval<I>()),
     (typename transform_iterator<I, F>::difference_type)
 ) operator-(const transform_iterator<I, F>& i,
@@ -986,11 +979,10 @@ FZ_DECLTYPE(
 /// A iterable container that represents the results from a `transform`
 /// function call.
 template<class InputIterator, class UnaryOperation>
-class transformed_range
-    : public const_container_base<
+struct transformed_range
+    : const_container_base<
           transformed_range<InputIterator, UnaryOperation>,
           transform_iterator<InputIterator, UnaryOperation> > {
-public:
 
     /// Const iterator type.
     typedef transform_iterator<InputIterator, UnaryOperation> const_iterator;
@@ -1046,8 +1038,6 @@ transformed_range<
                UnaryOperation
            >(begin(c), end(c), op);
 }
-
-/// @}
 
 }
 #endif

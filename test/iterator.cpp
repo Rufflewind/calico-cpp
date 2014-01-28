@@ -1,9 +1,10 @@
+#include <cassert>
 #include <cstdio>
 #include <iostream>
 #include <list>
 #include <vector>
-#include "iterator.hh"
-using namespace fz;
+#include <calico/iterator.hpp>
+using namespace cal;
 
 void statictest() {
 
@@ -59,9 +60,12 @@ void statictest() {
 
 int main(int argc, char**) {
 #ifdef HAVE_AUTO
-    integer_iterator<int> nats(0), end(argc);
+    integer_iterator<int> nats(0), end(37);
     auto sq = [](int x) { return x + 42; };
-    for (auto i : transform(make_range(nats, end), sq))
-        std::printf("%d\n", i);
+    int j = 42;
+    for (auto i : transform(make_range(nats, end), sq)) {
+        assert(i == j);
+        ++j;
+    }
 #endif
 }

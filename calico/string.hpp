@@ -1,5 +1,9 @@
-#ifndef FZ_STRING_HH
-#define FZ_STRING_HH
+#ifndef TCDMETYVJBGDZBUFTOIK
+#define TCDMETYVJBGDZBUFTOIK
+/// @file
+///
+/// Functions and types related to string-manipulation.
+///
 #include <cstddef>
 #include <iterator>
 #include <sstream>
@@ -7,13 +11,7 @@
 #include <string>
 #include <vector>
 extern "C" int snprintf(char*, std::size_t, const char*, ...);
-namespace fz {
-
-/// @addtogroup FzString Strings
-///
-/// Functions and types related to string-manipulation.
-///
-/// @{
+namespace cal {
 
 /// Returns a copy of the same string.
 inline std::string to_string(const std::string& s) { return s; }
@@ -189,11 +187,11 @@ std::string format_str(const char* format, T&&... t) {
     // remove it later.  See: http://stackoverflow.com/questions/12740403
     int n = snprintf(0, 0, format, forward<T>(t)...) + 1;
     if (n <= 0)
-        throw runtime_error("fz::format_str: 1st snprintf failed");
+        throw runtime_error("cal::format_str: 1st snprintf failed");
     string s(n, 0);
     n = snprintf(&s[0], n, format, forward<T>(t)...);
     if (n < 0)
-        throw runtime_error("fz::format_str: 2nd snprintf failed");
+        throw runtime_error("cal::format_str: 2nd snprintf failed");
     s.resize(n);
     return s;
 }
@@ -206,6 +204,5 @@ std::vector<T> str_to_vector(const std::basic_string<T>& s) {
     return std::vector<T>(begin, begin + s.size() + 1);
 }
 
-/// @}
 }
 #endif

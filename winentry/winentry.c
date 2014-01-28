@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <io.h>
 #include <windows.h>
+#include <winerror.h>
 #ifdef GUI
 #include <shellapi.h>
 #endif
@@ -49,19 +50,23 @@ static BOOL dyn_AttachConsole(DWORD dwProcessId) {
 
 /* Attaches to parent console or (if 'force' is nonzero) creates one if it
    does not exist.  Returns zero if a console was successfully attached or
-   created; nonzero otherwise. */
+   created.  Otherwise, a nonzero value is returned, which may be either `-1`,
+   a Windows error code, or an `errno`. */
 static int console_show(int force) {
     int handle;
     FILE *file;
+
+    /* attach/allocate console */
     if (!dyn_AttachConsole(dyn_ATTACH_PARENT_PROCESS)) {
         if (force) {
             if (!AllocConsole())
                 return (int) GetLastError();
         } else {
-            return -1;
+            return (int) GetLastError();
         }
     }
-    /* Link stdin */
+
+    /* link stdin */
     handle = _open_osfhandle((intptr_t) GetStdHandle(STD_INPUT_HANDLE),
                              _O_RDONLY);
     if (handle == -1)
@@ -70,7 +75,8 @@ static int console_show(int force) {
     if (!file)
         return errno;
     *stdin = *file;
-    /* Link stdout */
+
+    /* link stdout */
     handle = _open_osfhandle((intptr_t) GetStdHandle(STD_OUTPUT_HANDLE), 0);
     if (handle == -1)
         return -1;
@@ -78,7 +84,8 @@ static int console_show(int force) {
     if (!file)
         return errno;
     *stdout = *file;
-    /* Link stderr */
+
+    /* link stderr */
     handle = _open_osfhandle((intptr_t) GetStdHandle(STD_ERROR_HANDLE), 0);
     if (handle == -1)
         return -1;
@@ -86,25 +93,33 @@ static int console_show(int force) {
     if (!file)
         return errno;
     *stderr = *file;
+
     return 0;
 }
 
 /* Initializes the console.  Returns zero on success. */
-static void console_init() {
-    /* If there is no console, try to attach to the parent console. */
-    if (!GetConsoleWindow())
-        console_show(0);
+static int console_init(void) {
+    int ret;
 
-    /* Set console codepage to UTF-8 */
+    /* if there is no console, try to attach to the parent console */
+    if (!GetConsoleWindow()) {
+        ret = console_show(0);
+        if (ret)
+            return ret;
+    }
+
+    /* set console codepage to UTF-8 */
     prev_console_cp = GetConsoleCP();
     prev_console_output_cp = GetConsoleOutputCP();
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
+
+    return 0;
 }
 
-/* Deinitializes the console */
-static void console_deinit() {
-    /* Restore the console codepage */
+/* Deinitializes the console. */
+static void console_deinit(void) {
+    /* restore the console codepage */
     SetConsoleCP(prev_console_cp);
     SetConsoleOutputCP(prev_console_output_cp);
 }
@@ -114,19 +129,19 @@ static int argv_create(int argc) {
     wchar_t **argvw = wmain_args.argv;
     int i, *lens, total_len = 0, argn = argc + 1;
 
-    /* Store the UTF-8 lengths in an array */
+    /* store the UTF-8 lengths in an array */
     lens = (int *) HeapAlloc(heap, 0, argc * sizeof(*lens));
     if (!lens)
         return (int) GetLastError();
 
-    /* Query the lengths required */
+    /* query the lengths required */
     for (i = 0; i != argc; ++i) {
         int len = WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, 0, 0, 0, 0);
         lens[i] = len;
         total_len += len;
     }
 
-    /* Store argv as a single chunk: argv argv[0] ... argv[argc - 1] */
+    /* store argv as a single chunk: `argv argv[0] ... argv[argc - 1]` */
     argv = (char **) HeapAlloc(heap, 0, argn * sizeof(*argv) +
                                         total_len * sizeof(**argv));
     if (!argv) {
@@ -136,26 +151,26 @@ static int argv_create(int argc) {
     argv[0] = (char *) &argv[argn];
     for (i = 0; i != argc; ++i) {
 
-        /* Find the appropriate offset within the array */
+        /* find the appropriate offset within the array */
         int len = lens[i];
         argv[i + 1] = argv[i] + len;
 
-        /* Convert to UTF-8 */
+        /* convert to UTF-8 */
         WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, argv[i], len, 0, 0);
     }
-    argv[argc] = 0;                     /* Required by the standard */
+    argv[argc] = 0;                     /* required by the standard */
     HeapFree(heap, 0, lens);
     return 0;
 }
 
 /* Destroys the argument vector; argv is must not be null. */
-static void argv_destroy() {
+static void argv_destroy(void) {
     HeapFree(heap, 0, argv);
 }
 
 /* Displays a console for the program if it does not already exist.  Returns
    zero if it succeeds; nonzero otherwise. */
-int display_console() {
+int show_console(void) {
     return console_show(1);
 }
 
@@ -163,22 +178,29 @@ int display_console() {
 int wmain(int argc, wchar_t **argvw) {
     int ret;
 
-    /* Heap allocations are needed for argv_create */
+    /* heap allocations are needed for `argv_create` */
     heap = GetProcessHeap();
 
-    /* Store in global variables for later use */
+    /* store in global variables for later use */
     wmain_args.argv = argvw;
 
-    /* Initialize argv and the console*/
+    /* initialize `argv` */
     ret = argv_create(argc);
     if (ret)
         return ret;
-    console_init();
 
-    /* Call the standard C entry point with UTF-8 arguments */
+    /* initialize the console */
+    ret = console_init();
+    if (ret) {
+        argv_destroy();
+        MessageBoxW(0, wmain_nocon, wmain_nocon_title, MB_ICONERROR);
+        return ret;
+    }
+
+    /* call the standard C entry point with UTF-8 arguments */
     ret = main(argc, argv);
 
-    /* Cleanup */
+    /* cleanup */
     console_deinit();
     argv_destroy();
     return ret;
@@ -191,15 +213,15 @@ int CALLBACK wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmd, int sw) {
     int argc, ret;
     LPWSTR *argvw;
 
-    /* Unused parameters */
+    /* unused parameters */
     (void) prev;
 
-    /* Store in global variables for later use */
+    /* store in global variables for later use */
     wmain_args.hInstance = inst;
     wmain_args.lpCmdLine = cmd;
     wmain_args.nCmdShow = sw;
 
-    /* Obtain the arguments */
+    /* obtain the arguments */
     argvw = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!argvw) {
         DWORD error = GetLastError();
@@ -207,10 +229,10 @@ int CALLBACK wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmd, int sw) {
         return (int) error;
     }
 
-    /* Redirect to the Windows console entry point */
+    /* redirect to the Windows console entry point */
     ret = wmain(argc, argvw);
 
-    /* Cleanup & return */
+    /* cleanup */
     LocalFree(argvw);
     return ret;
 }
