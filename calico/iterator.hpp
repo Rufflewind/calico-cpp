@@ -38,7 +38,7 @@ struct reference_to_pointer<T, T&> {
 
 }
 
-/// A base type for implementing input iterators.
+/// CRTP base type for implementing input iterators.
 ///
 /// The derived type is should implement the following operations:
 ///
@@ -99,7 +99,7 @@ public:
     }
 
 protected:
-    ~input_iterator_base() {}
+    ~input_iterator_base() {} // don't try to initialize a CRTP base type
 };
 
 /// An iterator adapter that counts the offset as the iterator moves.
@@ -540,31 +540,14 @@ struct integer_iterator {
         return i._i - j._i;
     }
 
-    /// Returns an iterator with value equal to `T()`.
-    template<class Container> static
-    integer_iterator begin(const Container&) {
-        return integer_iterator(value_type());
-    }
-
-    /// Returns an iterator with value equal to the `size()` of the container.
-    ///
-    /// Requirements:
-    /// - `FiniteContainer` has a method named `size()`.
-    template<class Container> static
-    integer_iterator end(const Container& c) {
-        return integer_iterator(static_cast<value_type>(c.size()));
-    }
-
 private:
     value_type _i;
 };
 
-/// Base class for defining an immutable, iterable container.
+// *DEPRECATE* begins here
+/// CRTP base type for defining an immutable, iterable container (deprecated).
 ///
-/// A minimal definition of this container requires overriding the `begin()`,
-/// and `end()` methods in the `Derived` class.  If none are defined, the base
-/// class will call the *static* functions `begin(Derived)` and `end(Derived)`
-/// defined in the iterator.
+/// This type has been superseded by `container_base`.
 template<
     class Derived,
     class Iterator,
@@ -590,7 +573,7 @@ struct const_container_base {
 
     /// Const reference.
     typedef CALICO_HIDE(
-        typename std::iterator_traits<const_iterator>::referenc
+        typename std::iterator_traits<const_iterator>::reference
     ) const_reference;
 
     /// Difference type.
@@ -604,7 +587,7 @@ struct const_container_base {
     ) value_type;
 
     /// Creates a container.
-    explicit const_container_base() {}
+    const_container_base() {}
 
     /// Returns whether the container is empty.
     bool empty() const {
@@ -694,12 +677,213 @@ struct const_container_base {
     }
 
 protected:
-    ~const_container_base() {};
+    ~const_container_base() {}; // don't try to initialize a CRTP base type
+};
+// *DEPRECATE* ends here
+
+/// CRTP base class for defining an mutable, iterable container.
+///
+/// @tparam Derived        The derived type that is inheriting this class.
+/// @tparam ConstIterator  A const iterator type.
+/// @tparam Iterator       An iterator type that is convertible to
+///                        `ConstIterator`.
+/// @tparam Size           The size type.  Defaults to the `common_type` of the
+///                        unsigned `difference_type`s of the iterators.
+///
+/// The `Derived` type is responsible for providing the following methods:
+///
+/// ~~~~cpp
+///     Iterator begin();
+///     Iterator end();
+///     ConstIterator begin() const;    // optional
+///     ConstIterator end() const;      // optional
+/// ~~~~
+///
+template<
+    class Derived,
+    class ConstIterator,
+    class Iterator = ConstIterator,
+    class Size =
+    CALICO_HIDE(
+        (typename std::common_type<
+             typename std::make_unsigned<
+                 typename std::iterator_traits<ConstIterator>::difference_type
+             >::type,
+             typename std::make_unsigned<
+                 typename std::iterator_traits<Iterator>::difference_type
+             >::type
+         >::type)
+    )
+>
+struct container_base {
+
+    /// Size type.
+    typedef Size size_type;
+
+    /// Const iterator type.
+    typedef ConstIterator const_iterator;
+
+    /// Iterator type.
+    typedef Iterator iterator;
+
+    /// Const pointer type.
+    typedef CALICO_HIDE(
+        typename std::iterator_traits<iterator>::pointer
+    ) pointer;
+
+    /// Const reference type.
+    typedef CALICO_HIDE(
+        typename std::iterator_traits<const_iterator>::reference
+    ) const_reference;
+
+    /// Pointer type.
+    typedef CALICO_HIDE(
+        typename std::iterator_traits<const_iterator>::pointer
+    ) const_pointer;
+
+    /// Reference type.
+    typedef CALICO_HIDE(
+        typename std::iterator_traits<iterator>::reference
+    ) reference;
+
+    /// Difference type.
+    typedef CALICO_HIDE(
+        (typename std::common_type<
+             typename std::iterator_traits<const_iterator>::difference_type,
+             typename std::iterator_traits<iterator>::difference_type
+         >::type)
+    ) difference_type;
+
+    /// Value type.
+    typedef CALICO_HIDE(
+        (typename std::common_type<
+             typename std::iterator_traits<const_iterator>::value_type,
+             typename std::iterator_traits<iterator>::value_type
+         >::type)
+    ) value_type;
+
+    /// Returns whether the container is empty.
+    ///
+    /// This is done by comparing the `begin()` and `end()` iterators.
+    bool empty() const {
+        const Derived& dthis = static_cast<const Derived&>(*this);
+        return dthis.begin() == dthis.end();
+    }
+
+    /// Returns the number of elements in the container.
+    ///
+    /// This is done via the `distance` function.
+    size_type size() const {
+        using std::distance;
+        const Derived& dthis = static_cast<const Derived&>(*this);
+        return static_cast<size_type>(distance(dthis.begin(), dthis.end()));
+    }
+
+    /// Returns a `const_reference` to the first element in the container
+    ///
+    /// If the container is empty, the result is undefined.
+    const_reference front() const {
+        return static_cast<const Derived&>(*this).begin();
+    }
+
+    /// Returns a `reference` to the first element in the container.
+    ///
+    /// If the container is empty, the result is undefined.
+    reference front() {
+        return static_cast<Derived&>(*this).begin();
+    }
+
+    /// Returns a `const_reference` to the last element in the container.
+    ///
+    /// Defined only if the iterator is bidirectional.  If the container is
+    /// empty, the result is undefined.
+    CALICO_VALID_TYPE(
+        decltype(--std::declval<const Derived&>().end()),
+    const_reference) back() const {
+        return *--static_cast<const Derived&>(*this).end();
+    }
+
+    /// Returns a `reference` to the last element in the container.
+    ///
+    /// Defined only if the iterator is bidirectional.  If the container is
+    /// empty, the result is undefined.
+    CALICO_VALID_TYPE(
+        decltype(--std::declval<Derived&>().end()),
+    reference) back() {
+        return *--static_cast<Derived&>(*this).end();
+    }
+
+    /// Returns a `const_iterator` to the beginning of the container.
+    ///
+    /// Defined via the `begin()` function.
+    const_iterator cbegin() const {
+        return static_cast<const Derived&>(*this).begin();
+    }
+
+    /// Returns a `const_iterator` to the end of the container.
+    ///
+    /// Defined via the `end()` function.
+    const_iterator cend() const {
+        return static_cast<const Derived&>(*this).end();
+    }
+
+    /// Accesses the element at a given index with bounds-checking.
+    ///
+    /// Defined only if the container supports `operator[]`.
+    CALICO_VALID_TYPE(
+        decltype(std::declval<const Derived&>()[std::declval<size_type>()]),
+    const_reference) at(size_type index) const {
+        // First check is not strictly needed, but can be useful in case
+        // `size_type` happens to be a signed type.
+        const Derived& dthis = static_cast<const Derived&>(this);
+        if (index < size_type() || index >= dthis.size())
+            throw std::out_of_range("index out of range");
+        return dthis[index];
+    }
+
+    /// Accesses the element at a given index with bounds-checking.
+    ///
+    /// Defined only if the container supports `operator[]`.
+    CALICO_VALID_TYPE(
+        decltype(std::declval<Derived&>()[std::declval<size_type>()]),
+    reference) at(size_type index) {
+        // First check is not strictly needed, but can be useful in case
+        // `size_type` happens to be a signed type.
+        Derived& dthis = static_cast<Derived&>(*this);
+        if (index < size_type() || index >= dthis.size())
+            throw std::out_of_range("index out of range");
+        return dthis[index];
+    }
+
+    /// Accesses the element at a given index.
+    ///
+    /// Defined only if the iterator supports random access.
+    CALICO_VALID_TYPE(
+        decltype(std::declval<const Derived&>().begin()
+                 [std::declval<size_type>()]),
+    const_reference) operator[](size_type index) const {
+        const Derived* dthis = static_cast<const Derived*>(this);
+        return static_cast<Derived&>(*this).begin()[index];
+    }
+
+    /// Accesses the element at a given index.
+    ///
+    /// Defined only if the iterator supports random access.
+    CALICO_VALID_TYPE(
+        decltype(std::declval<Derived&>().begin()
+                 [std::declval<size_type>()]),
+    reference) operator[](size_type index) {
+        return static_cast<Derived&>(*this).begin()[index];
+    }
+
+protected:
+    ~container_base() {}; // don't try to initialize a CRTP base type
 };
 
+/// An container-like type that two iterators as a range.
 template<class InputIterator>
 struct iterator_range
-    : const_container_base<iterator_range<InputIterator>, InputIterator> {
+    : container_base<iterator_range<InputIterator>, InputIterator> {
     typedef InputIterator iterator_type;
     iterator_range(const iterator_type& first, const iterator_type& last)
         : first(first), last(last) {}
@@ -709,13 +893,14 @@ struct iterator_range
     iterator_type end()   const { return last;  }
 };
 
+/// Constructs an `iterator_range`.
 template<class InputIterator> inline
 iterator_range<InputIterator>
 make_range(const InputIterator& first, const InputIterator& last) {
     return iterator_range<InputIterator>(first, last);
 }
 
-/// Constructs an iterator range of integers from `T()` to `end`.
+/// Constructs an `iterator_range` of integers from `T()` to `end`.
 template<class T> inline
 iterator_range<integer_iterator<T> >
 integer_range(const T& end) {
@@ -967,7 +1152,7 @@ operator-(const transform_iterator<I, F>& i,
 /// function call.
 template<class InputIterator, class UnaryOperation>
 struct transformed_range
-    : const_container_base<
+    : container_base<
           transformed_range<InputIterator, UnaryOperation>,
           transform_iterator<InputIterator, UnaryOperation> > {
 

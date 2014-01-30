@@ -2,11 +2,9 @@ Calico
 ======
 
 A small utility library for C++.  Contains:
-- iterator types
-- lens types
+- iterator utilities
+- lens types for accessing and storing data
 - string utilities
-- C++11 compatibility header: provides feature detection + partial
-  implementation of various C++11 standard library types.
 - wrapper around the Windows Unicode entry point functions (`wmain`,
   `wWinMain`)
 

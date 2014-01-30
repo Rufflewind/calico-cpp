@@ -58,7 +58,7 @@ namespace cal {
      )
 #endif
 
-// Note: The guard macros can be removed once `cxx11.hpp` has been retired.
+// *DEPRECATE* These guards can be removed once `cxx11.hpp` has been retired.
 #ifndef CALICO_HAVE_UNPARENTHESIZE_TYPE
 #define CALICO_HAVE_UNPARENTHESIZE_TYPE
 template<class> struct unparenthesize_type;
@@ -81,7 +81,7 @@ struct unparenthesize_type<void(TypeExpression)> {
 template<> struct unparenthesize_type<void()> { typedef void type; };
 #endif
 
-// Note: The guard macros can be removed once `cxx11.hpp` has been retired.
+// *DEPRECATE* These guards can be removed once `cxx11.hpp` has been retired.
 #ifndef CALICO_HAVE_MATCH_CV
 #define CALICO_HAVE_MATCH_CV
 /// Sets the const-volatile qualifier of a type `T` to match the `Target`
@@ -100,7 +100,7 @@ template<class T, class U>
 struct match_cv<T, const volatile U> { typedef const volatile T type; };
 #endif
 
-// Note: The guard macros can be removed once `cxx11.hpp` has been retired.
+// *DEPRECATE* These guards can be removed once `cxx11.hpp` has been retired.
 #ifndef CALICO_HAVE_VALID_CALL
 #define CALICO_HAVE_VALID_CALL
 namespace _priv {
