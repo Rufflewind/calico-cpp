@@ -58,14 +58,23 @@ void statictest() {
 }
 
 
-int main(int argc, char**) {
-#ifdef HAVE_AUTO
+int main(int, char**) {
     integer_iterator<int> nats(0), end(37);
-    auto sq = [](int x) { return x + 42; };
+    auto adder = [](int x) { return x + 42; };
     int j = 42;
-    for (auto i : transform(make_range(nats, end), sq)) {
+    for (auto&& i : transform(make_range(nats, end), adder)) {
         assert(i == j);
         ++j;
     }
-#endif
+    --j;
+    for (auto&& i : reverse_range(transform(make_range(nats, end), adder))) {
+        assert(i == j);
+        --j;
+    }
+    ++j;
+    auto&& rev = reverse_range(transform(make_range(nats, end), adder));
+    for (auto&& i = rev.crbegin(), end = rev.crend(); i != end; ++i) {
+        assert(*i == j);
+        ++j;
+    }
 }

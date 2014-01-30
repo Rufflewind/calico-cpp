@@ -681,22 +681,74 @@ protected:
 };
 // *DEPRECATE* ends here
 
-/// CRTP base class for defining an mutable, iterable container.
+/// CRTP base type for defining an mutable, iterable container.
 ///
-/// @tparam Derived        The derived type that is inheriting this class.
-/// @tparam ConstIterator  A const iterator type.
+/// @tparam Derived        The derived type.
+/// @tparam ConstIterator  An iterator type for read-only access.
 /// @tparam Iterator       An iterator type that is convertible to
-///                        `ConstIterator`.
+///                        `ConstIterator`.  If the container is immutable,
+///                        it must be the same as `ConstIterator`.
 /// @tparam Size           The size type.  Defaults to the `common_type` of the
 ///                        unsigned `difference_type`s of the iterators.
 ///
-/// The `Derived` type is responsible for providing the following methods:
+/// The `Derived` type must override certain methods in order for this base
+/// type to work correctly.  It must provide each of the following at minimum:
+///
+/// - Either one of the following (starting with the lowest precedence):
+///   - `data` (equivalent to `_begin`)
+///   - `_begin`
+///   - `begin const` and `begin` (the latter is optional if the container
+///     is immutable).
+/// - Either one of the following (starting with the lowest precedence):
+///   - `size`
+///   - `_end`
+///   - `end const` and `end` (the latter is optional if the container
+///     is immutable).
+///
+/// The listing below shows the dependencies of each function defined by the
+/// base type.  The arrow (`<==`) may be read as "depends on".  Any of these
+/// functions may be overridden to customize the behavior of the container.
+///
+/// **Note:** Keep in mind that if the `Derived` type defines a function, the
+/// name of the function becomes shadowed so all overloads of this function
+/// provided by the base type become unavailable unless explicitly imported
+/// via a `using` declaration.
 ///
 /// ~~~~cpp
-///     Iterator begin();
-///     Iterator end();
-///     ConstIterator begin() const;    // optional
-///     ConstIterator end() const;      // optional
+///
+///  size const <==  begin const && end const
+/// _begin      <==  data /* not defined */
+/// _end        <==  begin && size
+///  begin      <== _begin
+///  end        <== _end
+///
+/// // special cases for consts
+///  begin const <== begin
+///  end   const <== end
+/// cbegin const <== begin const
+/// cend   const <== end   const
+///
+/// // queries
+/// empty    <== begin const && end const
+/// [] const <== begin const
+/// []       <== begin
+/// at const <== [] const
+/// at       <== []
+///
+/// // front & back
+/// front const <== begin const
+/// front       <== begin
+/// back  const <== end const
+/// back        <== end
+///
+/// // reverse iterators
+///  rbegin const <==  end   const
+///  rend   const <==  begin const
+///  rbegin       <==  end
+///  rend         <==  begin
+/// crbegin       <== rbegin const
+/// crend         <== rend   const
+///
 /// ~~~~
 ///
 template<
@@ -762,9 +814,15 @@ struct container_base {
          >::type)
     ) value_type;
 
+    /// Reverse iterator.
+    typedef std::reverse_iterator<iterator> reverse_iterator;
+
+    /// Const reverse iterator.
+    typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+
     /// Returns whether the container is empty.
     ///
-    /// This is done by comparing the `begin()` and `end()` iterators.
+    /// Depends on `begin() const` and `end() const`.
     bool empty() const {
         const Derived& dthis = static_cast<const Derived&>(*this);
         return dthis.begin() == dthis.end();
@@ -772,7 +830,8 @@ struct container_base {
 
     /// Returns the number of elements in the container.
     ///
-    /// This is done via the `distance` function.
+    /// Depends on `begin() const` and `end() const` and calls
+    /// `std::distance()` with ADL.
     size_type size() const {
         using std::distance;
         const Derived& dthis = static_cast<const Derived&>(*this);
@@ -781,58 +840,132 @@ struct container_base {
 
     /// Returns a `const_reference` to the first element in the container
     ///
-    /// If the container is empty, the result is undefined.
+    /// Depends on `begin() const`.  If the container is empty, the result is
+    /// undefined.
     const_reference front() const {
         return static_cast<const Derived&>(*this).begin();
     }
 
     /// Returns a `reference` to the first element in the container.
     ///
-    /// If the container is empty, the result is undefined.
+    /// Depends on `begin()`.  If the container is empty, the result is
+    /// undefined.
     reference front() {
         return static_cast<Derived&>(*this).begin();
     }
 
     /// Returns a `const_reference` to the last element in the container.
     ///
-    /// Defined only if the iterator is bidirectional.  If the container is
-    /// empty, the result is undefined.
+    /// Depends on `end() const` and is only defined if the iterator is
+    /// bidirectional.  If the container is empty, the result is undefined.
     CALICO_VALID_TYPE(
-        decltype(--std::declval<const Derived&>().end()),
+        decltype(--std::declval<const_iterator&>()),
     const_reference) back() const {
         return *--static_cast<const Derived&>(*this).end();
     }
 
     /// Returns a `reference` to the last element in the container.
     ///
-    /// Defined only if the iterator is bidirectional.  If the container is
-    /// empty, the result is undefined.
+    /// Depends on `end()` and is only defined if the iterator is
+    /// bidirectional.  If the container is empty, the result is undefined.
     CALICO_VALID_TYPE(
-        decltype(--std::declval<Derived&>().end()),
+        decltype(--std::declval<iterator&>()),
     reference) back() {
         return *--static_cast<Derived&>(*this).end();
     }
 
+    /// Returns an `iterator` to the beginning of the container.
+    ///
+    /// Depends on `_begin()`.
+    iterator begin() {
+        return static_cast<Derived&>(*this)._begin();
+    }
+
+    /// Returns an `iterator` to the end of the container.
+    ///
+    /// Depends on `_end()`.
+    iterator end() {
+        return static_cast<Derived&>(*this)._end();
+    }
+
     /// Returns a `const_iterator` to the beginning of the container.
     ///
-    /// Defined via the `begin()` function.
+    /// Depends on the non-const `begin()` and uses a `const_cast`.
+    const_iterator begin() const {
+        return static_cast<const_iterator>(
+            const_cast<Derived&>(
+                static_cast<const Derived&>(*this)).begin());
+    }
+
+    /// Returns a `const_iterator` to the end of the container.
+    ///
+    /// Depends on the non-const `end()` and uses a `const_cast`.
+    const_iterator end() const {
+        return static_cast<const_iterator>(
+            const_cast<Derived&>(
+                static_cast<const Derived&>(*this)).end());
+    }
+
+    /// Returns a `const_iterator` to the beginning of the container.
+    ///
+    /// Depends on `begin() const`.
     const_iterator cbegin() const {
         return static_cast<const Derived&>(*this).begin();
     }
 
     /// Returns a `const_iterator` to the end of the container.
     ///
-    /// Defined via the `end()` function.
+    /// Depends on `end() const`.
     const_iterator cend() const {
         return static_cast<const Derived&>(*this).end();
     }
 
+    /// Returns a `const_reverse_iterator` to the beginning of the container.
+    ///
+    /// Depends on `end()`.
+    reverse_iterator rbegin() {
+        return reverse_iterator(static_cast<Derived&>(*this).end());
+    }
+
+    /// Returns a `const_reverse_iterator` to the end of the container.
+    ///
+    /// Depends on `begin()`.
+    reverse_iterator rend() {
+        return reverse_iterator(static_cast<Derived&>(*this).begin());
+    }
+
+    /// Returns a `const_reverse_iterator` to the beginning of the container.
+    ///
+    /// Depends on `end() const`.
+    const_reverse_iterator rbegin() const {
+        return reverse_iterator(static_cast<const Derived&>(*this).end());
+    }
+
+    /// Returns a `const_reverse_iterator` to the end of the container.
+    ///
+    /// Depends on `begin() const`.
+    const_reverse_iterator rend() const {
+        return reverse_iterator(static_cast<const Derived&>(*this).begin());
+    }
+
+    /// Returns a `const_reverse_iterator` to the beginning of the container.
+    ///
+    /// Depends on `rbegin() const`.
+    const_reverse_iterator crbegin() const {
+        return static_cast<const Derived&>(*this).rbegin();
+    }
+
+    /// Returns a `const_reverse_iterator` to the end of the container.
+    ///
+    /// Depends on `rend() const`.
+    const_reverse_iterator crend() const {
+        return static_cast<const Derived&>(*this).rend();
+    }
+
     /// Accesses the element at a given index with bounds-checking.
     ///
-    /// Defined only if the container supports `operator[]`.
-    CALICO_VALID_TYPE(
-        decltype(std::declval<const Derived&>()[std::declval<size_type>()]),
-    const_reference) at(size_type index) const {
+    /// Depends on `operator[] const`.
+    const_reference at(size_type index) const {
         // First check is not strictly needed, but can be useful in case
         // `size_type` happens to be a signed type.
         const Derived& dthis = static_cast<const Derived&>(this);
@@ -843,10 +976,8 @@ struct container_base {
 
     /// Accesses the element at a given index with bounds-checking.
     ///
-    /// Defined only if the container supports `operator[]`.
-    CALICO_VALID_TYPE(
-        decltype(std::declval<Derived&>()[std::declval<size_type>()]),
-    reference) at(size_type index) {
+    /// Depends on `operator[]`.
+    reference at(size_type index) {
         // First check is not strictly needed, but can be useful in case
         // `size_type` happens to be a signed type.
         Derived& dthis = static_cast<Derived&>(*this);
@@ -857,26 +988,45 @@ struct container_base {
 
     /// Accesses the element at a given index.
     ///
-    /// Defined only if the iterator supports random access.
-    CALICO_VALID_TYPE(
-        decltype(std::declval<const Derived&>().begin()
-                 [std::declval<size_type>()]),
-    const_reference) operator[](size_type index) const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return static_cast<Derived&>(*this).begin()[index];
+    /// Depends on `begin() const` and calls `std::advance` with ADL.
+    const_reference operator[](size_type index) const {
+        using std::advance;
+        const_iterator it = static_cast<const Derived&>(*this).begin();
+        advance(it, index);
+        return *it;
     }
 
     /// Accesses the element at a given index.
     ///
-    /// Defined only if the iterator supports random access.
-    CALICO_VALID_TYPE(
-        decltype(std::declval<Derived&>().begin()
-                 [std::declval<size_type>()]),
-    reference) operator[](size_type index) {
-        return static_cast<Derived&>(*this).begin()[index];
+    /// Depends on `begin()` and calls `std::advance` with ADL.
+    reference operator[](size_type index) {
+        using std::advance;
+        iterator it = static_cast<Derived&>(*this).begin();
+        advance(it, index);
+        return *it;
     }
 
 protected:
+
+    /// Returns an `iterator` to the beginning of the container.
+    ///
+    /// Depends on `data()`.  This function is provided so that the non-const
+    /// `begin()` can be overridden without shadowing the const `begin()`
+    /// provided by this base type.
+    iterator _begin() {
+        return static_cast<Derived&>(*this).data();
+    }
+
+    /// Returns an `iterator` to the end of the container.
+    ///
+    /// Depends on `begin()` and `size()`.  This function is provided so that
+    /// the non-const `end()` can be overridden without shadowing the const
+    /// `end()` provided by this base type.
+    iterator _end() {
+        return static_cast<Derived&>(*this).begin()
+             + static_cast<Derived&>(*this).size();
+    }
+
     ~container_base() {}; // don't try to initialize a CRTP base type
 };
 
@@ -925,23 +1075,23 @@ template<class InputIterator, class UnaryOperation>
 struct transform_iterator {
 
     /// Underlying iterator type.
-    typedef InputIterator iterator_type;
+    typedef InputIterator iterator;
 
     /// Iterator category.
     typedef CALICO_HIDE(
-        typename std::iterator_traits<iterator_type>::iterator_category
+        typename std::iterator_traits<iterator>::iterator_category
     ) iterator_category;
 
     /// Difference type.
     typedef CALICO_HIDE(
-        typename std::iterator_traits<iterator_type>::difference_type
+        typename std::iterator_traits<iterator>::difference_type
     ) difference_type;
 
     /// Value type.
     typedef CALICO_HIDE(
         typename std::result_of<
             UnaryOperation(
-                typename std::iterator_traits<iterator_type>::reference
+                typename std::iterator_traits<iterator>::reference
             )
         >::type
     ) value_type;
@@ -961,38 +1111,12 @@ public:
 
     /// Constructs an iterator that applies a function to each element.
     transform_iterator(
-        const iterator_type& it,
+        const iterator& it,
         const UnaryOperation& op
     ) : _it(it), _op(op) {}
 
-    /// Returns the beginning iterator.
-    ///
-    /// Requirements:
-    /// - Underlying iterator must support `begin()`.
-    /// - `UnaryOperation` must be default-initializable.
-    template<class Container> static
-    CALICO_VALID_TYPE(
-        decltype(iterator_type::begin(std::declval<Container>())),
-        transform_iterator
-    ) begin(const Container& c) {
-        return transform_iterator(iterator_type::begin(c), UnaryOperation());
-    }
-
-    /// Returns the past-the-end iterator.
-    ///
-    /// Requirements:
-    /// - Underlying iterator must support `end()`.
-    /// - `UnaryOperation` must be default-initializable.
-    template<class Container> static
-    CALICO_VALID_TYPE(
-        decltype(iterator_type::end(std::declval<Container>())),
-        transform_iterator
-    ) end(const Container& c) {
-        return transform_iterator(iterator_type::end(c), UnaryOperation());
-    }
-
     /// Returns the underlying iterator.
-    const iterator_type& base() const { return _it; }
+    const iterator& base() const { return _it; }
 
     /// Returns the function object.
     const UnaryOperation& function() const { return _op; }
@@ -1018,7 +1142,7 @@ public:
 
     /// Pre-decrements the iterator.
     CALICO_VALID_TYPE(
-        decltype(--std::declval<iterator_type>()),
+        decltype(--std::declval<iterator&>()),
         transform_iterator&
     ) operator--() {
         --_it;
@@ -1027,7 +1151,7 @@ public:
 
     /// Post-decrements the iterator.
     CALICO_VALID_TYPE(
-        decltype(std::declval<iterator_type>()--),
+        decltype(std::declval<iterator&>()--),
         transform_iterator
     ) operator--(int) {
         transform_iterator t = *this;
@@ -1037,7 +1161,7 @@ public:
 
     /// Advances the iterator by `n`.
     CALICO_VALID_TYPE(
-        decltype(std::declval<iterator_type>() +=
+        decltype(std::declval<iterator&>() +=
                  std::declval<difference_type>()),
         transform_iterator&
     ) operator+=(difference_type n) {
@@ -1047,7 +1171,7 @@ public:
 
     /// Advances the iterator by `n` in reverse.
     CALICO_VALID_TYPE(
-        decltype(std::declval<iterator_type>() -=
+        decltype(std::declval<iterator&>() -=
                  std::declval<difference_type>()),
         transform_iterator&
     ) operator-=(difference_type n) {
@@ -1056,7 +1180,7 @@ public:
     }
 
 private:
-    iterator_type _it;
+    iterator _it;
     UnaryOperation _op;
 };
 
@@ -1126,7 +1250,7 @@ CALICO_HIDE(decltype(
     std::declval<transform_iterator<I, F> >() +
     std::declval<typename transform_iterator<I, F>::difference_type>()
 )) operator+(typename transform_iterator<I, F>::difference_type n,
-            const transform_iterator<I, F>& i) { return i + n; }
+             const transform_iterator<I, F>& i) { return i + n; }
 
 /// Returns an iterator advanced by `n` in reverse.
 template<class I, class F> inline
@@ -1136,7 +1260,7 @@ CALICO_HIDE(decltype(
         std::declval<typename transform_iterator<I, F>::difference_type>(),
         std::declval<F>())
 )) operator-(const transform_iterator<I, F>& i,
-          typename transform_iterator<I, F>::difference_type n) {
+             typename transform_iterator<I, F>::difference_type n) {
     return transform_iterator<I, F>(i.base() - n, i.function());
 }
 
@@ -1144,7 +1268,7 @@ CALICO_HIDE(decltype(
 template<class I, class F> inline
 CALICO_HIDE(decltype(std::declval<I>() - std::declval<I>()))
 operator-(const transform_iterator<I, F>& i,
-            const transform_iterator<I, F>& j) {
+          const transform_iterator<I, F>& j) {
     return i.base() - j.base();
 }
 
@@ -1200,16 +1324,31 @@ CALICO_ALT((
 /// "map" function).
 template<class Container, class UnaryOperation> inline
 CALICO_ALT((transformed_range<
-    decltype(begin(std::declval<const Container&>())),
+    typename iterator_type<const Container&>::type,
     UnaryOperation
 >), transformed_range<..>) transform(
     const Container& c,
     const UnaryOperation& op
 ) {
+    using namespace std;
     return transformed_range<
-               decltype(begin(std::declval<const Container&>())),
+               typename iterator_type<const Container&>::type,
                UnaryOperation
            >(begin(c), end(c), op);
+}
+
+/// Reverses a container or iterator range.
+///
+/// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
+/// the future when C++14 support is improved.
+template<class Container> inline
+CALICO_ALT((iterator_range<
+    decltype(std::declval<const Container&>().rbegin())
+>), iterator_range<..>) reverse_range(
+    const Container& c
+) {
+    return iterator_range<decltype(std::declval<const Container&>().rbegin())>
+           (c.rbegin(), c.rend());
 }
 
 }

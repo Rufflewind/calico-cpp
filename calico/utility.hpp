@@ -128,5 +128,29 @@ template<class T> struct valid_call
 #endif
 #endif
 
+namespace _priv {
+// Need to introduce `std::begin` here to allow ADL to work properly.
+using std::begin;
+template<class, class = void> struct iterator_type {};
+template<class T>             struct iterator_type<T,
+    typename std::conditional<0,
+          decltype(begin(std::declval<T>())),
+    void>::type>
+{ typedef decltype(begin(std::declval<T>())) type; };
+}
+/// Returns the iterator type of the given container-like type.
+///
+/// This is equivalent to `decltype(begin(std::declval<T>()))` with
+/// `std::begin` present in the current scope.
+template<class T> struct iterator_type
+#ifndef CALICO_DOC_ONLY
+  : _priv::iterator_type<T> {};
+#else
+{
+    /// The iterator type of the given container-like type.
+    typedef auto type;
+};
+#endif
+
 }
 #endif

@@ -1300,11 +1300,8 @@ template<class T>             struct get_iterator<T,
 }
 /// Obtains the default iterator type of a container or array (deprecated).
 ///
-/// Consider using this instead:
-///
-/// ~~~~cpp
-///     decltype(begin(std::declval<T>()))
-/// ~~~~
+/// Consider using `cal::iterator_type` instead, which supersedes this and
+/// allows ADL to work correctly.
 template<class T>
 struct get_iterator : _priv::get_iterator<T> {};
 
