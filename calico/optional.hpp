@@ -1,8 +1,9 @@
-#ifndef FEFMEVQFHPXPNWYXJLVS
+#ifndef FEFMEVQFHPXPNWYXJLVS // *DEPRECATE*
 #define FEFMEVQFHPXPNWYXJLVS
 /// @file
 ///
-/// Implementation of the `std::optional` type.  See @ref CalicoCxx11.
+/// This (deprecated) header implements the `std::optional` type.  See @ref
+/// CalicoCxx11.
 ///
 #include <stdexcept>
 namespace cal {
