@@ -2,12 +2,13 @@
 #define GTFNMTKLNRYHKAYKFJVL
 /// @file
 ///
-/// This header provides some basic features from C++11 and a few rudimentary
-/// feature-testing macros.  For details, see @ref CalicoCxx11.
+/// This (deprecated) header provides some basic features from C++11 and a few
+/// rudimentary feature-testing macros.  For details, see @ref CalicoCxx11.
 ///
 /// @defgroup CalicoCxx11 C++11 support
 ///
 /// Implementation of various features from C++11 for compatibility purposes.
+/// This module has been deprecated since v0.10.0.
 ///
 /// A set of macros is used determine the availability of C++11 features in
 /// some common compilers, assuming they even have these kinds of things
@@ -364,15 +365,12 @@ typedef HAVE_UINT64 uint64_t;
 /// Namespace `cal`.
 namespace cal {
 
-/// @defgroup CalicoUtility Utilities
-///
-/// Miscellaneous utility functions.
-///
-/// These are provided as an extension to the C++11 compatibility features and
-/// are not part of the C++11 standard library.
-///
+/// @addtogroup CalicoCxx11
 /// @{
 
+// This is a duplicate `match_cv` used to avoid including `utility.hpp`.
+#ifndef CALICO_HAVE_MATCH_CV
+#define CALICO_HAVE_MATCH_CV
 /// Obtains a type related to `T` with the same const-volatile qualifiers as
 /// `Target`.
 template<class T, class Target>
@@ -383,11 +381,7 @@ template<class T, class U>
 struct match_cv<T, volatile U>       { typedef volatile T type; };
 template<class T, class U>
 struct match_cv<T, const volatile U> { typedef const volatile T type; };
-
-/// @}
-
-/// @addtogroup CalicoCxx11
-/// @{
+#endif
 
 #ifdef HAVE_TYPE_TRAITS
 using std::add_const;
@@ -553,26 +547,31 @@ template<class T> struct remove_reference<T&&> { typedef T type; };
 
 #endif // HAVE_TYPE_TRAITS
 
-/// @}
-
-/// @addtogroup CalicoUtility
-/// @{
-
 // ---------------------------------------------------------------------------
 //
 // Macros
 // ======
 
+// Same as in `utility.hpp` but duplicated here to avoid including that.
+#ifndef CALICO_HAVE_UNPARENTHESIZE_TYPE
+#define CALICO_HAVE_UNPARENTHESIZE_TYPE
 /// Used to remove parentheses around a type expression: when a type `T` is
 /// passed in as a function type of the form `void(T)`, a typedef named `type`
 /// is provided to recover the type `T`.
 template<class>   struct unparenthesize_type;
 template<class T> struct unparenthesize_type<void(T)> { typedef T type;    };
 template<>        struct unparenthesize_type<void()>  { typedef void type; };
+#endif
 
 /// @def CALICO_UNPARENS(type_expr)
 ///
-/// Removes the parentheses around a type expression.
+/// Removes the parentheses around a type expression (deprecated).
+///
+/// Use the following instead:
+///
+/// ~~~~cpp
+/// typename cal::unparenthesize_type<void<type_expr> >::type
+/// ~~~~
 #ifndef CALICO_DOC_ONLY
 #   define CALICO_UNPARENS(type_expr)                                       \
         typename ::cal::unparenthesize_type<void(type_expr)>::type
@@ -580,11 +579,19 @@ template<>        struct unparenthesize_type<void()>  { typedef void type; };
 #   define CALICO_UNPARENS(type_expr) auto
 #endif
 
-/// @def CALICO_VALID_VAL(expr)
+/// @def CALICO_VALID_VAL(value_expr, return_value)
 ///
 /// Constructs an unevaluated context for the given expression to test the its
-/// validity.  Returns the `return_value` if `value_expr` is valid; causes a
-/// compiler error otherwise.  The result can be used to perform SFINAE tests.
+/// validity (deprecated).
+///
+/// Returns the `return_value` if `value_expr` is valid; causes a compiler
+/// error otherwise.  The result can be used to perform SFINAE tests.
+///
+/// Use the following instead:
+///
+/// ~~~~cpp
+///     sizeof(value_expr, 0) ? return_value : return_value
+/// ~~~~
 #ifndef CALICO_DOC_ONLY
 #   define CALICO_VALID_VAL(value_expr, return_value)               \
         (sizeof(value_expr, 0) ? return_value : return_value)
@@ -592,10 +599,19 @@ template<>        struct unparenthesize_type<void()>  { typedef void type; };
 #   define CALICO_VALID_VAL(value_expr, return_value) return_value
 #endif
 
-/// @def CALICO_VALID_TYPE(type_expr)
+/// @def CALICO_VALID_TYPE(type_expr, return_type)
 ///
 /// Returns the `return_type` if `type_expr` is a valid type; causes a
-/// compiler error otherwise.  The result can be used to perform SFINAE tests.
+/// compiler error otherwise (deprecated).
+///
+/// The result can be used to perform SFINAE tests.
+///
+/// Consider using the following instead:
+///
+/// ~~~~cpp
+///     typename std::conditional<0, type_expr, return_type>::type
+/// ~~~~
+#ifndef CALICO_VALID_TYPE
 #ifndef CALICO_DOC_ONLY
 #   define CALICO_VALID_TYPE(type_expr, return_type)                        \
       typename ::cal::enable_if<                                            \
@@ -605,12 +621,22 @@ template<>        struct unparenthesize_type<void()>  { typedef void type; };
 #else
 #   define CALICO_VALID_TYPE(type_expr, return_type) return_type
 #endif
+#endif
 
 /// @def CALICO_DECLTYPE(expr, fallback_type)
+///
+/// Attempts to compute the static type of `expr` with a `fallback_type` if
+/// this fails (deprecated).
 ///
 /// Equivalent to `decltype(expr)` if available; otherwise, defaults to the
 /// `fallback_type` provided that the expression is valid (the macro uses an
 /// `enable_if` check to do this).
+///
+/// Consider using the following instead:
+///
+/// ~~~~cpp
+///     decltype(expr)
+/// ~~~~
 #if defined(HAVE_DECLTYPE) || defined(CALICO_DOC_ONLY)
 #   define CALICO_DECLTYPE(expr, fallback_type) decltype(expr)
 #else
@@ -628,28 +654,39 @@ template<>        struct unparenthesize_type<void()>  { typedef void type; };
 
 /// @def CALICO_ENABLE_IF(condition, type_expr)
 ///
-/// Convenience macro for performing `enable_if` tests.
+/// Convenience macro for performing `enable_if` tests (deprecated).
+///
+/// Consider using the following instead:
+///
+/// ~~~~cpp
+///     typename std::enable_if<condition, type_expr>::type
+/// ~~~~
+#ifndef CALICO_ENABLE_IF
 #ifndef CALICO_DOC_ONLY
 #   define CALICO_ENABLE_IF(condition, type_expr)                            \
       typename ::cal::enable_if<(condition), CALICO_UNPARENS(type_expr)>::type
 #else
 #   define CALICO_ENABLE_IF(condition, type_expr) type_expr
 #endif
+#endif
 
 /// @def CALICO_ENABLE_IF_P(condition)
 ///
-/// Convenience macro for performing `enable_if` tests in the parameter list.
+/// Convenience macro for performing `enable_if` tests in the parameter list
+/// (deprecated).
+///
+/// Consider using either default template function arguments or the following
+/// replacement instead (including the initial comma):
+///
+/// ~~~~cpp
+///     , typename std::enable_if<condition>::type* = 0
+/// ~~~~
 #ifndef DOC_ONLY
 #   define CALICO_ENABLE_IF_P(condition)                    \
       , typename ::cal::enable_if<(condition)>::type* = 0
 #else
 #   define CALICO_ENABLE_IF_P(condition)
 #endif
-
-/// @}
-
-/// @addtogroup CalicoCxx11
-/// @{
 
 // ---------------------------------------------------------------------------
 //
@@ -1126,6 +1163,9 @@ inline T* addressof(T& x) {
 using std::to_string;
 #endif
 
+// Same as the one in `string.hpp` but duplicated here to avoid including it.
+#ifndef CALICO_HAVE_TO_STRING
+#define CALICO_HAVE_TO_STRING
 /// Constructs a string representation of an object using the stream insertion
 /// operator (`<<`).
 template<class T>
@@ -1134,6 +1174,7 @@ inline std::string to_string(const T& x) {
     stream << x;
     return stream.str();
 }
+#endif
 
 // ---------------------------------------------------------------------------
 //
@@ -1200,11 +1241,11 @@ cend(const C& c)     { return end(c);    }
 // Miscellaneous
 // =============
 
-/// @addtogroup CalicoUtility
+/// @addtogroup CalicoCxx11
 /// @{
 
 template<class T>
-inline std::string to_string(const T& x); // Defined earlier
+std::string to_string(const T& x); // Defined earlier
 
 namespace _priv {
 template<class, class = void> struct has_const_iterator  : false_type {};
@@ -1257,10 +1298,19 @@ template<class T>             struct get_iterator<T,
     ) type;
 };
 }
-/// Obtains the default iterator type of a container or array.
+/// Obtains the default iterator type of a container or array (deprecated).
+///
+/// Consider using this instead:
+///
+/// ~~~~cpp
+///     decltype(begin(std::declval<T>()))
+/// ~~~~
 template<class T>
 struct get_iterator : _priv::get_iterator<T> {};
 
+// Also defined in `utility.hpp` but that one is strictly variadic.
+#ifndef CALICO_HAVE_VALID_CALL
+#define CALICO_HAVE_VALID_CALL
 namespace _priv {
 template<class, class = void>
 struct valid_call : false_type {};
@@ -1301,6 +1351,7 @@ struct valid_call<F(T, U, V, W, X), typename enable_if<
 /// be called with parameters of type `T...`.  If variadic templates are not
 /// supported, a maximum of 5 arguments are supported.
 template<class T> struct valid_call : _priv::valid_call<T> {};
+#endif
 
 /// @}
 
@@ -1315,19 +1366,18 @@ namespace std {
 template<class Key>
 struct hash;
 
-/// @}
-
-/// @addtogroup CalicoUtility
-/// @{
-
-/// Returns the first item in an iterator pair.
+/// Returns the first item in an iterator pair (deprecated).
+///
+/// Consider using `cal::iterator_range` instead.
 template<class Iterator> inline
 CALICO_VALID_TYPE(
     typename std::iterator_traits<Iterator>::iterator_category,
     Iterator
 ) begin(const std::pair<Iterator, Iterator>& p) { return p.first;  }
 
-/// Returns the second item in an iterator pair.
+/// Returns the second item in an iterator pair (deprecated).
+///
+/// Consider using `cal::iterator_range` instead.
 template<class Iterator> inline
 CALICO_VALID_TYPE(
     typename std::iterator_traits<Iterator>::iterator_category,

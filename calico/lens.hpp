@@ -9,7 +9,8 @@
 /// required to be `Copyable`, only `Movable`.  They must allow the following
 /// operations:
 ///
-/// @code{.cpp}
+/// ~~~~cpp
+///
 ///     // This is the "get" function ("getter").
 ///     operator Lens::value_type() const;
 ///
@@ -18,7 +19,8 @@
 ///
 ///     // This is the rvalue-version of the "put" function (optional).
 ///     Lens& operator=(T&& x);
-/// @endcode
+///
+/// ~~~~
 ///
 #include <type_traits>
 #include <utility>

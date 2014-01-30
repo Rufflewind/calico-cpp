@@ -13,6 +13,18 @@
 extern "C" int snprintf(char*, std::size_t, const char*, ...);
 namespace cal {
 
+#ifndef CALICO_HAVE_TO_STRING
+#define CALICO_HAVE_TO_STRING
+/// Constructs a string representation of an object using the stream insertion
+/// operator (`<<`).
+template<class T>
+inline std::string to_string(const T& x) {
+    std::ostringstream stream;
+    stream << x;
+    return stream.str();
+}
+#endif
+
 /// Returns a copy of the same string.
 inline std::string to_string(const std::string& s) { return s; }
 
