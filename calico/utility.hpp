@@ -19,6 +19,10 @@ Start by examining the various [modules](modules.html) and
 /// @file
 ///
 /// Miscellaneous utility functions.
+#include <iterator>
+#include <tuple>
+#include <type_traits>
+/// Primary namespace.
 namespace cal {
 
 // Hide the unnecessary clutter in the generated documentation.
@@ -81,6 +85,11 @@ struct unparenthesize_type<void(TypeExpression)> {
 template<> struct unparenthesize_type<void()> { typedef void type; };
 #endif
 
+/// @see unparenthesize_type
+template<class TypeExpression>
+using unparenthesize_type_t =
+    typename unparenthesize_type<void(TypeExpression)>::type;
+
 // *DEPRECATE* These guards can be removed once `cxx11.hpp` has been retired.
 #ifndef CALICO_HAVE_MATCH_CV
 #define CALICO_HAVE_MATCH_CV
@@ -100,6 +109,10 @@ template<class T, class U>
 struct match_cv<T, const volatile U> { typedef const volatile T type; };
 #endif
 
+/// @see match_cv
+template<class T, class Target>
+using match_cv_t = typename match_cv<T, Target>::type;
+
 // *DEPRECATE* These guards can be removed once `cxx11.hpp` has been retired.
 #ifndef CALICO_HAVE_VALID_CALL
 #define CALICO_HAVE_VALID_CALL
@@ -107,9 +120,9 @@ namespace _priv {
 template<class, class = void>
 struct valid_call : std::false_type {};
 template<class F, class... T>
-struct valid_call<F(T...), typename std::enable_if<
-    sizeof(std::declval<F>()(std::declval<T>()...), 0) ? 1 : 1
->::type> : std::true_type {};
+struct valid_call<F(T...), typename std::conditional<0,
+    typename std::result_of<F(T...)>::type,
+void>::type> : std::true_type {};
 }
 /// Returns whether a function call is valid.
 ///
@@ -151,6 +164,109 @@ template<class T> struct iterator_type
     typedef auto type;
 };
 #endif
+
+/// @see iterator_type
+template<class T>
+using iterator_type_t = typename iterator_type<T>::type;
+
+/// Combines several `tuple` types into a single `tuple` type.
+template<class... Tuples>
+struct combine_tuples {
+#ifdef CALICO_DOC_ONLY
+    /// A single `tuple` type formed by combining multiple `tuple` types.
+    typedef std::tuple<..> type;
+#endif
+};
+template<>
+struct combine_tuples<> {
+    typedef std::tuple<> type;
+};
+template<class... Ts>
+struct combine_tuples<std::tuple<Ts...> > {
+    typedef std::tuple<Ts...> type;
+};
+template<class... Ts, class... Us, class... Tuples>
+struct combine_tuples<std::tuple<Ts...>, std::tuple<Us...>, Tuples...> {
+    typedef typename combine_tuples<
+        std::tuple<Ts..., Us...>,
+        Tuples...
+    >::type type;
+};
+
+/// @see combine_tuples
+template<class... Tuples>
+using combine_tuples_t = typename combine_tuples<Tuples...>::type;
+
+/// Constructs a `tuple` type containing `N` objects of type `T`.
+template<class T, std::size_t N>
+struct n_tuple {
+#ifdef CALICO_DOC_ONLY
+    /// A `tuple` type containing `N` objects of type `T`.
+    typedef std::tuple<..> type;
+#else
+    typedef typename combine_tuples<
+        std::tuple<T>,
+        typename n_tuple<T, N - 1>::type
+    >::type type;
+#endif
+};
+template<class T>
+struct n_tuple<T, 0> {
+    typedef std::tuple<> type;
+};
+
+/// @see n_tuple
+template<class T, std::size_t N>
+using n_tuple_t = typename n_tuple<T, N>::type;
+
+/// A wrapper function type that allows a function to be called with a `tuple`
+/// whose elements are unpacked as arguments.
+template<class Function>
+struct packed_params {
+    packed_params(const Function& f) : _f(f) {}
+
+private:
+    Function _f;
+    template<std::size_t J, std::size_t... I>
+    struct fold {
+        template<class Tuple>
+        static auto apply(const Function& f, const Tuple& x)
+        -> decltype(fold<J - 1, J - 1, I...>::apply(f, x)) {
+            return  fold<J - 1, J - 1, I...>::apply(f, x);
+        }
+    };
+    template<std::size_t... I>
+    struct fold<0, I...> {
+        template<class Tuple>
+        static auto apply(const Function& f, const Tuple& x)
+        -> decltype(f(std::get<I>(x)...)) {
+            return  f(std::get<I>(x)...);
+        }
+    };
+
+public:
+    /// Calls the function with the elements of a `tuple` as arguments.
+    template<class Tuple>
+    auto operator()(const Tuple& x) const
+#ifndef CALICO_DOC_ONLY
+    -> decltype(fold<std::tuple_size<Tuple>::value>::apply(_f, x))
+#endif
+    {
+        return  fold<std::tuple_size<Tuple>::value>::apply(_f, x);
+    }
+};
+
+/// Constructs a wrapper function object that allows a function to be called
+/// with a `tuple` whose elements are unpacked as arguments.
+template<class Function>
+#ifdef CALICO_DOC_ONLY
+auto
+#else
+packed_params<typename std::decay<Function>::type>
+#endif
+pack_params(const Function& f) {
+    return packed_params<typename std::decay<Function>::type>(f);
+}
 
 }
 #endif

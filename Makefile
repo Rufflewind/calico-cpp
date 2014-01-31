@@ -6,6 +6,7 @@ DL_NAME=snprintf_2.2
 DL_URL=http://www.ijs.si/software/snprintf/$(DL_NAME).tar.gz
 CXXFLAGS=$(CXX11) -Wall -I.
 CCFLAGS_EXT=-O3 # For external libraries
+CXXF=$(CXX) $(CXXFLAGS)
 
 all: test doc
 
@@ -13,20 +14,36 @@ clean:
 	rm -r dist
 
 test: \
-  $(TMP)/libsnprintf.a \
-  test/cxx11.cpp \
-  test/iterator.cpp \
-  test/lens.cpp \
-  test/string.cpp
+    $(TMP)/libsnprintf.a \
+    $(TMP)/test_cxx11 \
+    $(TMP)/test_iterator \
+    $(TMP)/test_lens \
+    $(TMP)/test_string \
+    $(TMP)/test_utility
+
+$(TMP)/test_cxx11: test/cxx11.cpp calico/cxx11.hpp
 	mkdir -p $(TMP)
-	$(CXX) $(CXXFLAGS) -o /dev/null -c test/cxx11.cpp
-	$(CXX) $(CXXFLAGS) -o $(TMP)/test test/iterator.cpp \
-	  && $(TMP)/test
-	$(CXX) $(CXXFLAGS) -o $(TMP)/test \
-	     $(TMP)/libsnprintf.a test/string.cpp \
-	  && $(TMP)/test
-	$(CXX) $(CXXFLAGS) -o $(TMP)/test test/lens.cpp \
-	  && $(TMP)/test
+	$(CXXF) -o $(TMP)/test_cxx11.o -c test/cxx11.cpp
+
+$(TMP)/test_iterator: test/iterator.cpp calico/iterator.hpp
+	mkdir -p $(TMP)
+	$(CXXF) -o $(TMP)/test_iterator test/iterator.cpp \
+	        && $(TMP)/test_iterator
+
+$(TMP)/test_lens: test/lens.cpp calico/lens.hpp
+	mkdir -p $(TMP)
+	$(CXXF) -o $(TMP)/test_lens test/lens.cpp \
+	        && $(TMP)/test_lens
+
+$(TMP)/test_string: test/string.cpp calico/string.hpp $(TMP)/libsnprintf.a
+	mkdir -p $(TMP)
+	$(CXXF) -o $(TMP)/test_string $(TMP)/libsnprintf.a test/string.cpp \
+	        && $(TMP)/test_string
+
+$(TMP)/test_utility: test/utility.cpp calico/utility.hpp
+	mkdir -p $(TMP)
+	$(CXXF) -o $(TMP)/test_utility test/utility.cpp \
+	        && $(TMP)/test_utility
 
 $(TMP)/libsnprintf.a:
 	mkdir -p $(TMP)/snprintf

@@ -362,7 +362,6 @@ typedef HAVE_UINT64 uint64_t;
 #   include <type_traits>
 #endif
 
-/// Namespace `cal`.
 namespace cal {
 
 /// @addtogroup CalicoCxx11
@@ -555,10 +554,10 @@ template<class T> struct remove_reference<T&&> { typedef T type; };
 // Same as in `utility.hpp` but duplicated here to avoid including that.
 #ifndef CALICO_HAVE_UNPARENTHESIZE_TYPE
 #define CALICO_HAVE_UNPARENTHESIZE_TYPE
+template<class>   struct unparenthesize_type;
 /// Used to remove parentheses around a type expression: when a type `T` is
 /// passed in as a function type of the form `void(T)`, a typedef named `type`
 /// is provided to recover the type `T`.
-template<class>   struct unparenthesize_type;
 template<class T> struct unparenthesize_type<void(T)> { typedef T type;    };
 template<>        struct unparenthesize_type<void()>  { typedef void type; };
 #endif

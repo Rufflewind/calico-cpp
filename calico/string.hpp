@@ -208,8 +208,10 @@ std::string format_str(const char* format, T&&... t) {
     return s;
 }
 
-/// Returns a copy of the given string as a vector of characters.  This
-/// function can be used to obtain a copy of the string's character buffer.
+/// Returns a copy of the given `string` as a `vector` of characters.
+///
+/// This function can be used to obtain a copy of the `string`'s character
+/// buffer.
 template<class T>
 std::vector<T> str_to_vector(const std::basic_string<T>& s) {
     const T* begin = s.c_str();
