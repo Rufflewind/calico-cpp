@@ -77,4 +77,40 @@ int main(int, char**) {
         assert(*i == j);
         ++j;
     }
+
+/* Expected output:
+(0, 1, 2, 3)
+(0, 1, 2, 4)
+(0, 1, 3, 4)
+(0, 2, 3, 4)
+(1, 2, 3, 4)
+(0, 1, 2, 5)
+(0, 1, 3, 5)
+(0, 2, 3, 5)
+(1, 2, 3, 5)
+(0, 1, 4, 5)
+(0, 2, 4, 5)
+(1, 2, 4, 5)
+(0, 3, 4, 5)
+(1, 3, 4, 5)
+(2, 3, 4, 5)
+(0, 1)
+(0, 2)
+(1, 2)
+(0, 3)
+(1, 3)
+(2, 3)
+(0)
+(1)
+(2)
+*/
+    for (auto&& i : iterate_sord<4>(6))
+        ; //std::cout << i << std::endl;
+    for (auto&& i : iterate_sord<2>(4))
+        ; //std::cout << i << std::endl;
+    for (auto&& i : iterate_sord<1>(3))
+        ; //std::cout << i << std::endl;
+    for (auto&& i : iterate_sord<0>(2))
+        ; //std::cout << i << std::endl;
+
 }

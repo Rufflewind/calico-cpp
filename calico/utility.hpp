@@ -268,5 +268,32 @@ pack_params(const Function& f) {
     return packed_params<typename std::decay<Function>::type>(f);
 }
 
+namespace _priv {
+template<class T, std::size_t N1, std::size_t I = 0>
+struct tuple_output_helper {
+    static void apply(std::ostream& s, const T& x) {
+        s << std::get<I>(x) << ", ";
+        tuple_output_helper<T, N1, I + 1>::apply(s, x);
+    }
+};
+template<class T, std::size_t N1>
+struct tuple_output_helper<T, N1, N1> {
+    static void apply(std::ostream& s, const T& x) {
+        s << std::get<N1>(x);
+    }
+};
+}
+inline std::ostream& operator<<(std::ostream& s, const std::tuple<>&) {
+    return s << "()";
+}
+/// Outputs a `tuple` in the format `(a, b, c, ...)`.
+template<class... Ts>
+inline std::ostream& operator<<(std::ostream& s, const std::tuple<Ts...>& x) {
+    s        << "(";
+    _priv::tuple_output_helper<std::tuple<Ts...>, sizeof...(Ts) - 1>
+        ::apply(s, x);
+    return s << ")";
+}
+
 }
 #endif
