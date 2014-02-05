@@ -713,52 +713,53 @@ struct container_base {
 
     /// Returns whether the container is empty.
     ///
-    /// Depends on `begin() const` and `end() const`.
+    /// Depends on `begin() const` (ADL) and `end() const` (ADL).
     bool empty() const {
         const Derived& dthis = static_cast<const Derived&>(*this);
-        return dthis.begin() == dthis.end();
+        return _priv::adl_begin(dthis) == _priv::adl_begin(dthis);
     }
 
     /// Returns the number of elements in the container.
     ///
-    /// Depends on `begin() const` and `end() const` and calls
-    /// `std::distance()` with ADL.
+    /// Depends on `begin() const` (ADL) and `end() const` (ADL) and uses
+    /// `std::distance()` (ADL).
     size_type size() const {
         using std::distance;
         const Derived& dthis = static_cast<const Derived&>(*this);
-        return static_cast<size_type>(distance(dthis.begin(), dthis.end()));
+        return static_cast<size_type>(distance(_priv::adl_begin(dthis),
+                                               _priv::adl_end(dthis)));
     }
 
     /// Returns a `const_reference` to the first element in the container
     ///
-    /// Depends on `begin() const`.  If the container is empty, the result is
-    /// undefined.
+    /// Depends on `begin() const` (ADL).  If the container is empty, the
+    /// result is undefined.
     const_reference front() const {
-        return static_cast<const Derived&>(*this).begin();
+        return *_priv::adl_begin(static_cast<const Derived&>(*this));
     }
 
     /// Returns a `reference` to the first element in the container.
     ///
-    /// Depends on `begin()`.  If the container is empty, the result is
+    /// Depends on `begin()` (ADL).  If the container is empty, the result is
     /// undefined.
     reference front() {
-        return static_cast<Derived&>(*this).begin();
+        return *_priv::adl_begin(static_cast<Derived&>(*this));
     }
 
     /// Returns a `const_reference` to the last element in the container.
     ///
-    /// Depends on `end() const` and is only defined if the iterator is
+    /// Depends on `end() const` (ADL) and is only defined if the iterator is
     /// bidirectional.  If the container is empty, the result is undefined.
     const_reference back() const {
-        return *--static_cast<const Derived&>(*this).end();
+        return *--_priv::adl_end(static_cast<const Derived&>(*this));
     }
 
     /// Returns a `reference` to the last element in the container.
     ///
-    /// Depends on `end()` and is only defined if the iterator is
+    /// Depends on `end()` (ADL) and is only defined if the iterator is
     /// bidirectional.  If the container is empty, the result is undefined.
     reference back() {
-        return *--static_cast<Derived&>(*this).end();
+        return *--_priv::adl_end(static_cast<Derived&>(*this));
     }
 
     /// Returns an `iterator` to the beginning of the container.
@@ -777,62 +778,68 @@ struct container_base {
 
     /// Returns a `const_iterator` to the beginning of the container.
     ///
-    /// Depends on the non-const `begin()` and uses a `const_cast`.
+    /// Depends on the non-const `begin()` (ADL) and uses a `const_cast`.
     const_iterator begin() const {
+        const Derived& dthis = static_cast<const Derived&>(*this);
         return static_cast<const_iterator>(
-            const_cast<Derived&>(
-                static_cast<const Derived&>(*this)).begin());
+            _priv::adl_begin(const_cast<Derived&>(dthis))
+        );
     }
 
     /// Returns a `const_iterator` to the end of the container.
     ///
-    /// Depends on the non-const `end()` and uses a `const_cast`.
+    /// Depends on the non-const `end()` (ADL) and uses a `const_cast`.
     const_iterator end() const {
+        const Derived& dthis = static_cast<const Derived&>(*this);
         return static_cast<const_iterator>(
-            const_cast<Derived&>(
-                static_cast<const Derived&>(*this)).end());
+            _priv::adl_end(const_cast<Derived&>(dthis))
+        );
     }
 
     /// Returns a `const_iterator` to the beginning of the container.
     ///
-    /// Depends on `begin() const`.
+    /// Depends on `begin() const` (ADL).
     const_iterator cbegin() const {
-        return static_cast<const Derived&>(*this).begin();
+        return _priv::adl_begin(static_cast<const Derived&>(*this));
     }
 
     /// Returns a `const_iterator` to the end of the container.
     ///
-    /// Depends on `end() const`.
+    /// Depends on `end() const` (ADL).
     const_iterator cend() const {
-        return static_cast<const Derived&>(*this).end();
+        return _priv::adl_end(static_cast<const Derived&>(*this));
     }
 
     /// Returns a `const_reverse_iterator` to the beginning of the container.
     ///
-    /// Depends on `end()`.
+    /// Depends on `end()` (ADL).
     reverse_iterator rbegin() {
-        return reverse_iterator(static_cast<Derived&>(*this).end());
+        const Derived& dthis = static_cast<Derived&>(*this);
+        return reverse_iterator(_priv::adl_end(dthis));
     }
 
     /// Returns a `const_reverse_iterator` to the end of the container.
     ///
-    /// Depends on `begin()`.
+    /// Depends on `begin()` (ADL).
     reverse_iterator rend() {
-        return reverse_iterator(static_cast<Derived&>(*this).begin());
+        const Derived& dthis = static_cast<Derived&>(*this);
+        return reverse_iterator(_priv::adl_begin(dthis));
     }
 
     /// Returns a `const_reverse_iterator` to the beginning of the container.
     ///
-    /// Depends on `end() const`.
+    /// Depends on `end() const` (ADL).
     const_reverse_iterator rbegin() const {
-        return reverse_iterator(static_cast<const Derived&>(*this).end());
+        const Derived& dthis = static_cast<const Derived&>(*this);
+        return reverse_iterator(_priv::adl_end(dthis));
     }
 
     /// Returns a `const_reverse_iterator` to the end of the container.
     ///
-    /// Depends on `begin() const`.
+    /// Depends on `begin() const` (ADL).
     const_reverse_iterator rend() const {
-        return reverse_iterator(static_cast<const Derived&>(*this).begin());
+        const Derived& dthis = static_cast<const Derived&>(*this);
+        return reverse_iterator(_priv::adl_begin(dthis));
     }
 
     /// Returns a `const_reverse_iterator` to the beginning of the container.
