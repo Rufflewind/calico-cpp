@@ -105,12 +105,12 @@ int main(int, char**) {
 (2)
 */
     for (auto&& i : iterate_sord<4>(6))
-        ; //std::cout << i << std::endl;
+        (void) i; //std::cout << i << std::endl;
     for (auto&& i : iterate_sord<2>(4))
-        ; //std::cout << i << std::endl;
+        (void) i; //std::cout << i << std::endl;
     for (auto&& i : iterate_sord<1>(3))
-        ; //std::cout << i << std::endl;
+        (void) i; //std::cout << i << std::endl;
     for (auto&& i : iterate_sord<0>(2))
-        ; //std::cout << i << std::endl;
+        (void) i; //std::cout << i << std::endl;
 
 }

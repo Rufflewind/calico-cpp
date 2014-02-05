@@ -36,6 +36,34 @@ struct reference_to_pointer<T, T&> {
     type get(T& r) { return &r; }
 };
 
+// Implements ADL lookup for `begin` and `end`.
+
+using std::begin;
+using std::end;
+
+template<class Container> inline
+auto adl_begin(const Container& c)
+-> decltype(begin(c))
+{   return  begin(c); }
+
+template<class Container> inline
+auto adl_end(const Container& c)
+-> decltype(end(c))
+{   return  end(c); }
+
+// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
+// the future when C++14 support is improved.
+
+template<class Container> inline
+auto adl_rbegin(const Container& c)
+-> decltype(c.rbegin())
+{   return  c.rend(); }
+
+template<class Container> inline
+auto adl_rend(const Container& c)
+-> decltype(c.rend())
+{   return  c.rend(); }
+
 }
 
 /// CRTP base type for implementing input iterators.
@@ -73,7 +101,13 @@ private:
 public:
 
     /// Pointer type.
-    typedef CALICO_HIDE(typename _pointer::type) pointer;
+    typedef
+#ifdef CALICO_DOC_ONLY
+        auto
+#else
+        typename _pointer::type
+#endif
+        pointer;
 
     /// Compares two iterators for equality.
     bool operator==(const Derived& i) const { return false; }
@@ -544,143 +578,6 @@ private:
     value_type _i;
 };
 
-// *DEPRECATE* begins here
-/// CRTP base type for defining an immutable, iterable container (deprecated).
-///
-/// This type has been superseded by `container_base`.
-template<
-    class Derived,
-    class Iterator,
-    class Size =
-    CALICO_HIDE(
-        typename std::make_unsigned<
-            typename std::iterator_traits<Iterator>::difference_type
-        >::type
-    )
->
-struct const_container_base {
-
-    /// Size type.
-    typedef Size size_type;
-
-    /// Const iterator.
-    typedef Iterator const_iterator;
-
-    /// Const pointer.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<const_iterator>::pointer
-    ) const_pointer;
-
-    /// Const reference.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<const_iterator>::reference
-    ) const_reference;
-
-    /// Difference type.
-    typedef CALICO_HIDE(
-            typename std::iterator_traits<const_iterator>::difference_type
-    ) difference_type;
-
-    /// Value type.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<const_iterator>::value_type
-    ) value_type;
-
-    /// Creates a container.
-    const_container_base() {}
-
-    /// Returns whether the container is empty.
-    bool empty() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return dthis->size() == size_type();
-    }
-
-    /// Returns the number of elements in the container.
-    size_type size() const {
-        using std::distance;
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return static_cast<size_type>(distance(dthis->begin(), dthis->end()));
-    }
-
-    /// Returns a reference to the first element in the container (provided
-    /// that the container is not empty).
-    const_reference front() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return *dthis->cbegin();
-    }
-
-    /// Returns a reference to the last element in the container (provided
-    /// that the container is not empty and the container is bidirectional).
-    CALICO_ENABLE_IF(
-        (std::is_base_of<
-             std::bidirectional_iterator_tag,
-             typename std::iterator_traits<const_iterator>::iterator_category
-         >::value),
-        const_reference
-    ) back() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return *--dthis->cend();
-    }
-
-    /// Returns a const-qualified iterator to the beginning of the container.
-    const_iterator begin() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return const_iterator::begin(*dthis);
-    }
-
-    /// Returns a const-qualified iterator to the beginning of the container.
-    const_iterator cbegin() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return dthis->begin();
-    }
-
-    /// Returns a const-qualified iterator to the end of the container.
-    const_iterator end() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return const_iterator::end(*dthis);
-    }
-
-    /// Returns a const-qualified iterator to the end of the container.
-    const_iterator cend() const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return dthis->end();
-    }
-
-    /// Accesses the element at a given index (if the container supports
-    /// random access).
-    CALICO_ENABLE_IF(
-        (std::is_base_of<
-             std::random_access_iterator_tag,
-             typename std::iterator_traits<const_iterator>::iterator_category
-         >::value),
-        const_reference
-    ) at(size_type index) const {
-        // First check is not strictly needed, but can be useful in case
-        // `size_type` happens to be a signed type.
-        const Derived* dthis = static_cast<const Derived*>(this);
-        if (index < size_type() || index >= dthis->size())
-            throw std::out_of_range("index out of range");
-        return (*dthis)[index];
-    }
-
-    /// Accesses the element at a given index (if the container supports
-    /// random access).
-    CALICO_ENABLE_IF(
-        (std::is_base_of<
-             std::random_access_iterator_tag,
-             typename std::iterator_traits<const_iterator>::iterator_category
-         >::value),
-        const_reference
-    ) operator[](size_type index) const {
-        const Derived* dthis = static_cast<const Derived*>(this);
-        return *(dthis->cbegin() + index);
-    }
-
-protected:
-    ~const_container_base() {}; // don't try to initialize a CRTP base type
-};
-// *DEPRECATE* ends here
-
 /// CRTP base type for defining an mutable, iterable container.
 ///
 /// @tparam Derived        The derived type.
@@ -778,47 +675,41 @@ struct container_base {
     /// Iterator type.
     typedef Iterator iterator;
 
-    /// Const pointer type.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<iterator>::pointer
-    ) pointer;
-
-    /// Const reference type.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<const_iterator>::reference
-    ) const_reference;
-
-    /// Pointer type.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<const_iterator>::pointer
-    ) const_pointer;
-
-    /// Reference type.
-    typedef CALICO_HIDE(
-        typename std::iterator_traits<iterator>::reference
-    ) reference;
-
     /// Difference type.
-    typedef CALICO_HIDE(
-        (typename std::common_type<
-             typename std::iterator_traits<const_iterator>::difference_type,
-             typename std::iterator_traits<iterator>::difference_type
-         >::type)
-    ) difference_type;
+    typedef typename std::common_type<
+              typename std::iterator_traits<const_iterator>::difference_type,
+              typename std::iterator_traits<iterator>::difference_type
+           >::type
+        difference_type;
 
     /// Value type.
-    typedef CALICO_HIDE(
-        (typename std::common_type<
-             typename std::iterator_traits<const_iterator>::value_type,
-             typename std::iterator_traits<iterator>::value_type
-         >::type)
-    ) value_type;
+    typedef typename std::common_type<
+              typename std::iterator_traits<const_iterator>::value_type,
+              typename std::iterator_traits<iterator>::value_type
+           >::type
+        value_type;
 
-    /// Reverse iterator.
-    typedef std::reverse_iterator<iterator> reverse_iterator;
+    /// Const reference type.
+    typedef typename std::iterator_traits<const_iterator>::reference
+        const_reference;
+
+    /// Reference type.
+    typedef typename std::iterator_traits<iterator>::reference
+        reference;
+
+    /// Const pointer type.
+    typedef typename std::iterator_traits<const_iterator>::pointer
+        const_pointer;
+
+    /// Pointer type.
+    typedef typename std::iterator_traits<iterator>::pointer
+        pointer;
 
     /// Const reverse iterator.
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+
+    /// Reverse iterator.
+    typedef std::reverse_iterator<iterator> reverse_iterator;
 
     /// Returns whether the container is empty.
     ///
@@ -1268,84 +1159,47 @@ operator-(const transform_iterator<I, F>& i,
     return i.base() - j.base();
 }
 
-/// A iterable container that represents the results from a `transform`
-/// function call.
-template<class InputIterator, class UnaryOperation>
-struct transformed_range
-    : container_base<
-          transformed_range<InputIterator, UnaryOperation>,
-          transform_iterator<InputIterator, UnaryOperation> > {
-
-    /// Const iterator type.
-    typedef transform_iterator<InputIterator, UnaryOperation> const_iterator;
-
-    /// Default constructor.
-    transformed_range() {}
-
-    /// Constructor.
-    transformed_range(
-        const InputIterator& first,
-        const InputIterator& last,
-        const UnaryOperation& op
-    ) : _first(first), _last(last), _op(op) {}
-
-    /// Returns the beginning to the container.
-    const_iterator begin() const { return const_iterator(_first, _op); }
-
-    /// Returns the end to the container.
-    const_iterator end()   const { return const_iterator(_last,  _op); }
-
-private:
-    InputIterator _first;
-    InputIterator _last;
-    UnaryOperation _op;
-};
+/// Constructs a `transform_iterator`.
+template<class InputIterator, class UnaryOperation> inline
+transform_iterator<InputIterator, UnaryOperation>
+make_transform_iterator(const InputIterator& it, const UnaryOperation& op) {
+    return transform_iterator<InputIterator, UnaryOperation>(it, op);
+}
 
 /// Applies a given function to every element of an iterator range and returns
 /// the result as a lazily evaluated iterable container (i.e. the "map"
 /// function).
 template<class InputIterator, class UnaryOperation> inline
-CALICO_ALT((
-    transformed_range<InputIterator, UnaryOperation>
-), transformed_range<..>) transform(
-    const InputIterator& first,
-    const InputIterator& last,
-    const UnaryOperation& op
-) {
-    return transformed_range<InputIterator, UnaryOperation>(first, last, op);
-}
+auto transform(const InputIterator& first,
+               const InputIterator& last,
+               const UnaryOperation& op)
+#ifndef CALICO_DOC_ONLY
+-> decltype(make_range(make_transform_iterator(first, op),
+                       make_transform_iterator(last, op)))
+#endif
+{   return  make_range(make_transform_iterator(first, op),
+                       make_transform_iterator(last, op)); }
 
 /// Applies a given function to every element of an iterable container and
 /// returns the result as a lazily evaluated iterable container (i.e. the
 /// "map" function).
 template<class Container, class UnaryOperation> inline
-CALICO_ALT((transformed_range<
-    typename iterator_type<const Container&>::type,
-    UnaryOperation
->), transformed_range<..>) transform(
-    const Container& c,
-    const UnaryOperation& op
-) {
-    using namespace std;
-    return transformed_range<
-               typename iterator_type<const Container&>::type,
-               UnaryOperation
-           >(begin(c), end(c), op);
-}
+auto transform(const Container& c, const UnaryOperation& op)
+#ifndef CALICO_DOC_ONLY
+-> decltype(transform(_priv::adl_begin(c), _priv::adl_end(c), op))
+#endif
+{   return  transform(_priv::adl_begin(c), _priv::adl_end(c), op); }
 
 /// Reverses a container or iterator range.
 ///
 /// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
 /// the future when C++14 support is improved.
 template<class Container> inline
-CALICO_ALT((iterator_range<
-    decltype(std::declval<const Container&>().rbegin())
->), iterator_range<..>) reverse_range(
-    const Container& c
-) {
-    return iterator_range<decltype(std::declval<const Container&>().rbegin())>
-           (c.rbegin(), c.rend());
-}
+auto reverse_range(const Container& c)
+#ifndef CALICO_DOC_ONLY
+-> decltype(make_range(_priv::adl_rbegin(c), _priv::adl_rend(c)))
+#endif
+{   return  make_range(_priv::adl_rbegin(c), _priv::adl_rend(c)); }
 
 namespace _priv {
 // Initialize the tuple to the form `(0, 1, 2, ..., N2 + 1)`.

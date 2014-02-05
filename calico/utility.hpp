@@ -31,7 +31,7 @@ namespace cal {
 #  define CALICO_ALT(type_expr, alt_type_expr) alt_type_expr
 #else
 #  define CALICO_ALT(type_expr, alt_type_expr) \
-     typename unparenthesize_type<void(type_expr)>::type
+     typename ::cal::unparenthesize_type<void(type_expr)>::type
 #endif
 #define CALICO_HIDE(type_expr) CALICO_ALT(type_expr, auto)
 
@@ -40,7 +40,7 @@ namespace cal {
 #ifndef CALICO_VALID_TYPE
 #  define CALICO_VALID_TYPE(type_expr, return_type)                         \
      CALICO_ALT(                                                            \
-         (typename std::conditional<                                        \
+         (typename ::std::conditional<                                      \
               0,                                                            \
               CALICO_HIDE(type_expr),                                       \
               CALICO_HIDE(return_type)                                      \
@@ -54,7 +54,7 @@ namespace cal {
 #ifndef CALICO_ENABLE_IF
 #  define CALICO_ENABLE_IF(condition, return_type)                          \
      CALICO_ALT(                                                            \
-         (typename std::enable_if<                                          \
+         (typename ::std::enable_if<                                        \
               (condition),                                                  \
               CALICO_HIDE(return_type)                                      \
           >::type),                                                         \

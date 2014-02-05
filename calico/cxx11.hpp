@@ -612,10 +612,10 @@ template<>        struct unparenthesize_type<void()>  { typedef void type; };
 /// ~~~~
 #ifndef CALICO_VALID_TYPE
 #ifndef CALICO_DOC_ONLY
-#   define CALICO_VALID_TYPE(type_expr, return_type)                        \
-      typename ::cal::enable_if<                                            \
-        CALICO_VALID_VAL(cal::declval<CALICO_UNPARENS(type_expr)>(), true), \
-        CALICO_UNPARENS(return_type)                                        \
+#   define CALICO_VALID_TYPE(type_expr, return_type)                          \
+      typename ::cal::enable_if<                                              \
+        CALICO_VALID_VAL(::cal::declval<CALICO_UNPARENS(type_expr)>(), true), \
+        CALICO_UNPARENS(return_type)                                          \
       >::type
 #else
 #   define CALICO_VALID_TYPE(type_expr, return_type) return_type
