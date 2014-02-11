@@ -31,7 +31,7 @@ namespace cal {
 #  define CALICO_ALT(type_expr, alt_type_expr) alt_type_expr
 #else
 #  define CALICO_ALT(type_expr, alt_type_expr) \
-     typename ::cal::unparenthesize_type<void(type_expr)>::type
+     ::cal::unparenthesize_type_t<void(type_expr)>
 #endif
 #define CALICO_HIDE(type_expr) CALICO_ALT(type_expr, auto)
 
@@ -86,9 +86,8 @@ template<> struct unparenthesize_type<void()> { typedef void type; };
 #endif
 
 /// @see unparenthesize_type
-template<class TypeExpression>
-using unparenthesize_type_t =
-    typename unparenthesize_type<void(TypeExpression)>::type;
+template<class T>
+using unparenthesize_type_t = typename unparenthesize_type<T>::type;
 
 // *DEPRECATE* These guards can be removed once `cxx11.hpp` has been retired.
 #ifndef CALICO_HAVE_MATCH_CV
@@ -142,14 +141,42 @@ template<class T> struct valid_call
 #endif
 
 namespace _priv {
-// Need to introduce `std::begin` here to allow ADL to work properly.
+// Implementation of ADL lookup helper functions for `begin` and `end`.
+
 using std::begin;
+using std::end;
+
+template<class Container> inline
+auto adl_begin(const Container& c)
+-> decltype(begin(c))
+{   return  begin(c); }
+
+template<class Container> inline
+auto adl_end(const Container& c)
+-> decltype(end(c))
+{   return  end(c); }
+
+// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
+// the future when C++14 support is improved.
+
+template<class Container> inline
+auto adl_rbegin(const Container& c)
+-> decltype(c.rbegin())
+{   return  c.rend(); }
+
+template<class Container> inline
+auto adl_rend(const Container& c)
+-> decltype(c.rend())
+{   return  c.rend(); }
+
+// Implementation of `iterator_type`.
 template<class, class = void> struct iterator_type {};
 template<class T>             struct iterator_type<T,
     typename std::conditional<0,
-          decltype(begin(std::declval<T>())),
+          decltype(adl_begin(std::declval<T>())),
     void>::type>
-{ typedef decltype(begin(std::declval<T>())) type; };
+{ typedef decltype(adl_begin(std::declval<T>())) type; };
+
 }
 /// Returns the iterator type of the given container-like type.
 ///
@@ -199,25 +226,25 @@ using combine_tuples_t = typename combine_tuples<Tuples...>::type;
 
 /// Constructs a `tuple` type containing `N` objects of type `T`.
 template<class T, std::size_t N>
-struct n_tuple {
+struct ntuple {
 #ifdef CALICO_DOC_ONLY
     /// A `tuple` type containing `N` objects of type `T`.
-    typedef std::tuple<..> type;
+    typedef std::tuple<UNSPECIFIED> type;
 #else
-    typedef typename combine_tuples<
+    typedef combine_tuples_t<
         std::tuple<T>,
-        typename n_tuple<T, N - 1>::type
-    >::type type;
+        typename ntuple<T, N - 1>::type
+    > type;
 #endif
 };
 template<class T>
-struct n_tuple<T, 0> {
+struct ntuple<T, 0> {
     typedef std::tuple<> type;
 };
 
-/// @see n_tuple
+/// @see ntuple
 template<class T, std::size_t N>
-using n_tuple_t = typename n_tuple<T, N>::type;
+using ntuple_t = typename ntuple<T, N>::type;
 
 /// A wrapper function type that allows a function to be called with a `tuple`
 /// whose elements are unpacked as arguments.
@@ -258,7 +285,7 @@ public:
 
 /// Constructs a wrapper function object that allows a function to be called
 /// with a `tuple` whose elements are unpacked as arguments.
-template<class Function>
+template<class Function> inline
 #ifdef CALICO_DOC_ONLY
 auto
 #else
@@ -268,6 +295,9 @@ pack_params(const Function& f) {
     return packed_params<typename std::decay<Function>::type>(f);
 }
 
+std::ostream& operator<<(std::ostream&, const std::tuple<>&);
+template<class... Ts>
+std::ostream& operator<<(std::ostream&, const std::tuple<Ts...>&);
 namespace _priv {
 template<class T, std::size_t N1, std::size_t I = 0>
 struct tuple_output_helper {
@@ -287,8 +317,8 @@ inline std::ostream& operator<<(std::ostream& s, const std::tuple<>&) {
     return s << "()";
 }
 /// Outputs a `tuple` in the format `(a, b, c, ...)`.
-template<class... Ts>
-inline std::ostream& operator<<(std::ostream& s, const std::tuple<Ts...>& x) {
+template<class... Ts> inline
+std::ostream& operator<<(std::ostream& s, const std::tuple<Ts...>& x) {
     s        << "(";
     _priv::tuple_output_helper<std::tuple<Ts...>, sizeof...(Ts) - 1>
         ::apply(s, x);

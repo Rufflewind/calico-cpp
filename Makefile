@@ -1,5 +1,6 @@
-DOC=dist/doc
-TMP=dist/tmp
+DIST=dist
+DOC=$(DIST)/doc
+TMP=$(DIST)/tmp
 CXX03=--std=c++03
 CXX11=--std=c++11
 DL_NAME=snprintf_2.2
@@ -11,7 +12,7 @@ CXXF=$(CXX) $(CXXFLAGS)
 all: test doc
 
 clean:
-	rm -r dist
+	rm -fr $(DIST)
 
 test: \
     $(TMP)/libsnprintf.a \

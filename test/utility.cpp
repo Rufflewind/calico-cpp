@@ -20,19 +20,19 @@ int main() {
         std::tuple<float, int>
     >::value));
     assert((std::is_same<
-        n_tuple_t<double, 0>,
+        ntuple_t<double, 0>,
         std::tuple<>
     >::value));
     assert((std::is_same<
-        n_tuple_t<double, 1>,
+        ntuple_t<double, 1>,
         std::tuple<double>
     >::value));
     assert((std::is_same<
-        n_tuple_t<double, 2>,
+        ntuple_t<double, 2>,
         std::tuple<double, double>
     >::value));
     assert((std::is_same<
-        n_tuple_t<double, 3>,
+        ntuple_t<double, 3>,
         std::tuple<double, double, double>
     >::value));
 }
