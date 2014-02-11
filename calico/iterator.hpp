@@ -36,34 +36,6 @@ struct reference_to_pointer<T, T&> {
     type get(T& r) { return &r; }
 };
 
-// Implements ADL lookup for `begin` and `end`.
-
-using std::begin;
-using std::end;
-
-template<class Container> inline
-auto adl_begin(const Container& c)
--> decltype(begin(c))
-{   return  begin(c); }
-
-template<class Container> inline
-auto adl_end(const Container& c)
--> decltype(end(c))
-{   return  end(c); }
-
-// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
-// the future when C++14 support is improved.
-
-template<class Container> inline
-auto adl_rbegin(const Container& c)
--> decltype(c.rbegin())
-{   return  c.rend(); }
-
-template<class Container> inline
-auto adl_rend(const Container& c)
--> decltype(c.rend())
-{   return  c.rend(); }
-
 }
 
 /// CRTP base type for implementing input iterators.
@@ -1205,7 +1177,7 @@ namespace _priv {
 // Initialize the tuple to the form `(0, 1, 2, ..., N2 + 1)`.
 template<class T, std::size_t N2, std::size_t I = 0>
 struct sord_tuple_iterator_helper_init {
-    static void apply(n_tuple_t<T, N2 + 2>& tup) {
+    static void apply(ntuple_t<T, N2 + 2>& tup) {
         std::get<I + 1>(tup) = std::get<I>(tup) + 1;
         sord_tuple_iterator_helper_init<T, N2, I + 1>::apply(tup);
     }
@@ -1213,31 +1185,31 @@ struct sord_tuple_iterator_helper_init {
 // Initialize the last element.
 template<class T, std::size_t N2>
 struct sord_tuple_iterator_helper_init<T, N2, N2> {
-    static void apply(n_tuple_t<T, N2 + 2>& tup) {
+    static void apply(ntuple_t<T, N2 + 2>& tup) {
         std::get<N2 + 1>(tup) = std::get<N2>(tup) + 1;
     }
 };
 // Special case where `N == 1`.
 template<class T>
 struct sord_tuple_iterator_helper_init<T, static_cast<std::size_t>(-1), 0> {
-    static void apply(n_tuple_t<T, 1>&) {}
+    static void apply(ntuple_t<T, 1>&) {}
 };
 // Special case where `N == 0`.
 template<class T>
 struct sord_tuple_iterator_helper_init<T, static_cast<std::size_t>(-2), 0> {
-    static void apply(n_tuple_t<T, 0>&) {}
+    static void apply(ntuple_t<T, 0>&) {}
 };
 // Retrieves the element just before `I`.
 template<class T, std::size_t N, std::size_t I = 0>
 struct sord_tuple_iterator_helper_getprev {
-    static T apply(const n_tuple_t<T, N>& tup) {
+    static T apply(const ntuple_t<T, N>& tup) {
         return std::get<I - 1>(tup);
     }
 };
 // Use the default-initialized value minus one if it doesn't exist.
 template<class T, std::size_t N>
 struct sord_tuple_iterator_helper_getprev<T, N, 0> {
-    static T apply(const n_tuple_t<T, N>&) {
+    static T apply(const ntuple_t<T, N>&) {
         return T() - 1;
     }
 };
@@ -1245,7 +1217,7 @@ struct sord_tuple_iterator_helper_getprev<T, N, 0> {
 // cascade to the next one (and so forth).
 template<class T, std::size_t N1, std::size_t I = 0>
 struct sord_tuple_iterator_helper_next {
-    static void apply(n_tuple_t<T, N1 + 1>& tup, bool& end, const T& max) {
+    static void apply(ntuple_t<T, N1 + 1>& tup, bool& end, const T& max) {
         ++std::get<I>(tup);
         if (std::get<I>(tup) == std::get<I + 1>(tup)) {
             std::get<I>(tup) = 1 +
@@ -1257,7 +1229,7 @@ struct sord_tuple_iterator_helper_next {
 // Last one; if capped, we've reached the end.
 template<class T, std::size_t N1>
 struct sord_tuple_iterator_helper_next<T, N1, N1> {
-    static void apply(n_tuple_t<T, N1 + 1>& tup, bool& end, const T& max) {
+    static void apply(ntuple_t<T, N1 + 1>& tup, bool& end, const T& max) {
         ++std::get<N1>(tup);
         if (std::get<N1>(tup) == max)
             end = true;
@@ -1266,7 +1238,7 @@ struct sord_tuple_iterator_helper_next<T, N1, N1> {
 // Special case where `N == 0`.
 template<class T>
 struct sord_tuple_iterator_helper_next<T, static_cast<std::size_t>(-1), 0> {
-    static void apply(n_tuple_t<T, 0>&, bool&, const T&) {}
+    static void apply(ntuple_t<T, 0>&, bool&, const T&) {}
 };
 }
 // Tuple iterator used by `iterate_sord`.
@@ -1274,7 +1246,7 @@ template<class T, std::size_t N>
 struct sord_tuple_iterator
   : input_iterator_base<
         const sord_tuple_iterator<T, N>,
-        n_tuple_t<T, N>
+        ntuple_t<T, N>
     > {
     // Initialize the iterator.  If `N == 0` then there are no elements so the
     // iterator is already at the end.
@@ -1285,7 +1257,7 @@ struct sord_tuple_iterator
         _priv::sord_tuple_iterator_helper_next<T, N - 1>::apply(tup, end, max);
         return *this;
     }
-    const n_tuple_t<T, N>& operator*() const { return tup; }
+    const ntuple_t<T, N>& operator*() const { return tup; }
     friend bool operator==(const sord_tuple_iterator& i,
                            const sord_tuple_iterator& j) {
         return i.end && j.end;
@@ -1293,7 +1265,7 @@ struct sord_tuple_iterator
 private:
     T max;
     bool end;
-    n_tuple_t<T, N> tup;
+    ntuple_t<T, N> tup;
 };
 
 /// Iterate over all natural number `N`-tuples with a strict ordering imposed
