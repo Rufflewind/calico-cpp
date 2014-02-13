@@ -12,6 +12,42 @@
 namespace cal {
 namespace _priv {
 
+// ADL lookup helper functions for `begin` and `end`.
+
+using std::begin;
+using std::end;
+
+template<class Container> inline
+auto adl_begin(const Container& c)
+-> decltype(begin(c))
+{   return  begin(c); }
+
+template<class Container> inline
+auto adl_end(const Container& c)
+-> decltype(end(c))
+{   return  end(c); }
+
+// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
+// the future when C++14 support is improved.
+
+template<class Container> inline
+auto adl_rbegin(const Container& c)
+-> decltype(c.rbegin())
+{   return  c.rend(); }
+
+template<class Container> inline
+auto adl_rend(const Container& c)
+-> decltype(c.rend())
+{   return  c.rend(); }
+
+// Implementation of `iterator_type`.
+template<class, class = void> struct iterator_type {};
+template<class T>             struct iterator_type<T,
+    typename std::conditional<0,
+          decltype(adl_begin(std::declval<T>())),
+    void>::type>
+{ typedef decltype(adl_begin(std::declval<T>())) type; };
+
 // A proxy object that behaves like a pointer.
 template<class Ref>
 struct proxy_pointer {
@@ -37,6 +73,24 @@ struct reference_to_pointer<T, T&> {
 };
 
 }
+
+/// Returns the iterator type of the given container-like type.
+///
+/// This is equivalent to `decltype(begin(std::declval<T>()))` with
+/// `std::begin` present in the current scope.
+template<class T> struct iterator_type
+#ifndef CALICO_DOC_ONLY
+  : _priv::iterator_type<T> {};
+#else
+{
+    /// The iterator type of the given container-like type.
+    typedef auto type;
+};
+#endif
+
+/// @see iterator_type
+template<class T>
+using iterator_type_t = typename iterator_type<T>::type;
 
 /// CRTP base type for implementing input iterators.
 ///
@@ -889,7 +943,7 @@ protected:
     ~container_base() {}; // don't try to initialize a CRTP base type
 };
 
-/// An container-like type that two iterators as a range.
+/// An container-like type defined by a pair of iterators.
 template<class InputIterator>
 struct iterator_range
     : container_base<iterator_range<InputIterator>, InputIterator> {
@@ -909,7 +963,7 @@ make_range(const InputIterator& first, const InputIterator& last) {
     return iterator_range<InputIterator>(first, last);
 }
 
-/// Constructs an `iterator_range` of integers from `T()` to `end`.
+/// Returns the range of integers in `T()` (inclusive) to `end` (exclusive).
 template<class T> inline
 iterator_range<integer_iterator<T> >
 integer_range(const T& end) {
@@ -919,7 +973,7 @@ integer_range(const T& end) {
     );
 }
 
-/// Constructs an iterator range of integers from `begin` to `end`.
+/// Returns the range of integers in `begin` (inclusive) to `end` (exclusive).
 template<class T> inline
 iterator_range<integer_iterator<T> >
 integer_range(const T& begin, const T& end) {
@@ -928,6 +982,14 @@ integer_range(const T& begin, const T& end) {
         integer_iterator<T>(end)
     );
 }
+
+/// Returns the range of indices in a container.
+template<class Container> inline
+auto index_range(const Container& c)
+#ifndef CALICO_DOC_ONLY
+-> decltype(integer_range(c.size()))
+#endif
+{   return  integer_range(c.size()); }
 
 /// An iterator that applies a function to each element.
 template<class InputIterator, class UnaryOperation>
@@ -1172,133 +1234,6 @@ auto reverse_range(const Container& c)
 -> decltype(make_range(_priv::adl_rbegin(c), _priv::adl_rend(c)))
 #endif
 {   return  make_range(_priv::adl_rbegin(c), _priv::adl_rend(c)); }
-
-namespace _priv {
-// Initialize the tuple to the form `(0, 1, 2, ..., N2 + 1)`.
-template<class T, std::size_t N2, std::size_t I = 0>
-struct sord_tuple_iterator_helper_init {
-    static void apply(ntuple_t<T, N2 + 2>& tup) {
-        std::get<I + 1>(tup) = std::get<I>(tup) + 1;
-        sord_tuple_iterator_helper_init<T, N2, I + 1>::apply(tup);
-    }
-};
-// Initialize the last element.
-template<class T, std::size_t N2>
-struct sord_tuple_iterator_helper_init<T, N2, N2> {
-    static void apply(ntuple_t<T, N2 + 2>& tup) {
-        std::get<N2 + 1>(tup) = std::get<N2>(tup) + 1;
-    }
-};
-// Special case where `N == 1`.
-template<class T>
-struct sord_tuple_iterator_helper_init<T, static_cast<std::size_t>(-1), 0> {
-    static void apply(ntuple_t<T, 1>&) {}
-};
-// Special case where `N == 0`.
-template<class T>
-struct sord_tuple_iterator_helper_init<T, static_cast<std::size_t>(-2), 0> {
-    static void apply(ntuple_t<T, 0>&) {}
-};
-// Retrieves the element just before `I`.
-template<class T, std::size_t N, std::size_t I = 0>
-struct sord_tuple_iterator_helper_getprev {
-    static T apply(const ntuple_t<T, N>& tup) {
-        return std::get<I - 1>(tup);
-    }
-};
-// Use the default-initialized value minus one if it doesn't exist.
-template<class T, std::size_t N>
-struct sord_tuple_iterator_helper_getprev<T, N, 0> {
-    static T apply(const ntuple_t<T, N>&) {
-        return T() - 1;
-    }
-};
-// Increments the tuple (of size `N1 + 1`).  If capped, reset this one and
-// cascade to the next one (and so forth).
-template<class T, std::size_t N1, std::size_t I = 0>
-struct sord_tuple_iterator_helper_next {
-    static void apply(ntuple_t<T, N1 + 1>& tup, bool& end, const T& max) {
-        ++std::get<I>(tup);
-        if (std::get<I>(tup) == std::get<I + 1>(tup)) {
-            std::get<I>(tup) = 1 +
-                sord_tuple_iterator_helper_getprev<T, N1 + 1, I>::apply(tup);
-            sord_tuple_iterator_helper_next<T, N1, I + 1>::apply(tup, end, max);
-        }
-    }
-};
-// Last one; if capped, we've reached the end.
-template<class T, std::size_t N1>
-struct sord_tuple_iterator_helper_next<T, N1, N1> {
-    static void apply(ntuple_t<T, N1 + 1>& tup, bool& end, const T& max) {
-        ++std::get<N1>(tup);
-        if (std::get<N1>(tup) == max)
-            end = true;
-    }
-};
-// Special case where `N == 0`.
-template<class T>
-struct sord_tuple_iterator_helper_next<T, static_cast<std::size_t>(-1), 0> {
-    static void apply(ntuple_t<T, 0>&, bool&, const T&) {}
-};
-}
-// Tuple iterator used by `iterate_sord`.
-template<class T, std::size_t N>
-struct sord_tuple_iterator
-  : input_iterator_base<
-        const sord_tuple_iterator<T, N>,
-        ntuple_t<T, N>
-    > {
-    // Initialize the iterator.  If `N == 0` then there are no elements so the
-    // iterator is already at the end.
-    sord_tuple_iterator(T max, bool end = false) : max(max), end(end || !N) {
-        _priv::sord_tuple_iterator_helper_init<T, N - 2>::apply(tup);
-    }
-    sord_tuple_iterator& operator++() {
-        _priv::sord_tuple_iterator_helper_next<T, N - 1>::apply(tup, end, max);
-        return *this;
-    }
-    const ntuple_t<T, N>& operator*() const { return tup; }
-    friend bool operator==(const sord_tuple_iterator& i,
-                           const sord_tuple_iterator& j) {
-        return i.end && j.end;
-    }
-private:
-    T max;
-    bool end;
-    ntuple_t<T, N> tup;
-};
-
-/// Iterate over all natural number `N`-tuples with a strict ordering imposed
-/// on the elements.
-///
-/// For a tuple of the form `(x[0], ... x[N - 1])`, the requirement is `x[i] <
-/// x[i + 1]` for all `i < N - 1`.  The iterator returns tuples in this order
-/// such that the first element is the most rapidly varying element.  For
-/// example:
-///
-///     (0, 1, 2, 3)
-///     (0, 1, 2, 4)
-///     (0, 1, 3, 4)
-///     (0, 2, 3, 4)
-///     (1, 2, 3, 4)
-///     (0, 1, 2, 5)
-///     (0, 1, 3, 5)
-///     (0, 2, 3, 5)
-///     (1, 2, 3, 5)
-///     (0, 1, 4, 5)
-///     (0, 2, 4, 5)
-///     (1, 2, 4, 5)
-///     (0, 3, 4, 5)
-///     (1, 3, 4, 5)
-///     (2, 3, 4, 5)
-///
-template<std::size_t N, class T>
-inline iterator_range<sord_tuple_iterator<T, N> > iterate_sord(T max) {
-    return make_range(
-        sord_tuple_iterator<T, N>(max),
-        sord_tuple_iterator<T, N>(max, true)
-    );
-}
 
 }
 #endif

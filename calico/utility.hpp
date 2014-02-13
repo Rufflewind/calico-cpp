@@ -19,7 +19,6 @@ Start by examining the various [modules](modules.html) and
 /// @file
 ///
 /// Miscellaneous utility functions.
-#include <iterator>
 #include <tuple>
 #include <type_traits>
 /// Primary namespace.
@@ -139,62 +138,6 @@ template<class T> struct valid_call
 };
 #endif
 #endif
-
-namespace _priv {
-// Implementation of ADL lookup helper functions for `begin` and `end`.
-
-using std::begin;
-using std::end;
-
-template<class Container> inline
-auto adl_begin(const Container& c)
--> decltype(begin(c))
-{   return  begin(c); }
-
-template<class Container> inline
-auto adl_end(const Container& c)
--> decltype(end(c))
-{   return  end(c); }
-
-// Requires `rbegin` and `rend` as member functions.  This may be relaxed in
-// the future when C++14 support is improved.
-
-template<class Container> inline
-auto adl_rbegin(const Container& c)
--> decltype(c.rbegin())
-{   return  c.rend(); }
-
-template<class Container> inline
-auto adl_rend(const Container& c)
--> decltype(c.rend())
-{   return  c.rend(); }
-
-// Implementation of `iterator_type`.
-template<class, class = void> struct iterator_type {};
-template<class T>             struct iterator_type<T,
-    typename std::conditional<0,
-          decltype(adl_begin(std::declval<T>())),
-    void>::type>
-{ typedef decltype(adl_begin(std::declval<T>())) type; };
-
-}
-/// Returns the iterator type of the given container-like type.
-///
-/// This is equivalent to `decltype(begin(std::declval<T>()))` with
-/// `std::begin` present in the current scope.
-template<class T> struct iterator_type
-#ifndef CALICO_DOC_ONLY
-  : _priv::iterator_type<T> {};
-#else
-{
-    /// The iterator type of the given container-like type.
-    typedef auto type;
-};
-#endif
-
-/// @see iterator_type
-template<class T>
-using iterator_type_t = typename iterator_type<T>::type;
 
 /// Combines several `tuple` types into a single `tuple` type.
 template<class... Tuples>
