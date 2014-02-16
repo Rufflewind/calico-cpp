@@ -1,14 +1,11 @@
-#ifndef FEFMEVQFHPXPNWYXJLVS // *DEPRECATE*
+#ifndef FEFMEVQFHPXPNWYXJLVS
 #define FEFMEVQFHPXPNWYXJLVS
 /// @file
 ///
-/// This (deprecated) header implements the `std::optional` type.  See @ref
-/// CalicoCxx11.
+/// This header implements a replacement for `std::optional`.
 ///
 #include <stdexcept>
 namespace cal {
-/// @addtogroup CalicoCxx11
-/// @{
 
 /// A type that represents a missing value for `optional`.
 class nullopt_t {};
@@ -85,6 +82,5 @@ private:
     bool _engaged;
 };
 
-/// @}
 }
 #endif
