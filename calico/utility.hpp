@@ -256,6 +256,11 @@ struct tuple_output_helper<T, N1, N1> {
     }
 };
 }
+
+}
+
+namespace std {
+
 inline std::ostream& operator<<(std::ostream& s, const std::tuple<>&) {
     return s << "()";
 }
@@ -263,8 +268,8 @@ inline std::ostream& operator<<(std::ostream& s, const std::tuple<>&) {
 template<class... Ts> inline
 std::ostream& operator<<(std::ostream& s, const std::tuple<Ts...>& x) {
     s        << "(";
-    _priv::tuple_output_helper<std::tuple<Ts...>, sizeof...(Ts) - 1>
-        ::apply(s, x);
+    cal::_priv::tuple_output_helper<std::tuple<Ts...>, sizeof...(Ts) - 1>
+              ::apply(s, x);
     return s << ")";
 }
 
