@@ -238,9 +238,15 @@ pack_params(const Function& f) {
     return packed_params<typename std::decay<Function>::type>(f);
 }
 
+}
+
+namespace std {
 std::ostream& operator<<(std::ostream&, const std::tuple<>&);
 template<class... Ts>
 std::ostream& operator<<(std::ostream&, const std::tuple<Ts...>&);
+}
+
+namespace cal {
 namespace _priv {
 template<class T, std::size_t N1, std::size_t I = 0>
 struct tuple_output_helper {
@@ -256,7 +262,6 @@ struct tuple_output_helper<T, N1, N1> {
     }
 };
 }
-
 }
 
 namespace std {
