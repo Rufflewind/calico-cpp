@@ -20,6 +20,7 @@ Start by examining the various [modules](modules.html) and
 ///
 /// Miscellaneous utility functions.
 #include <tuple>
+#include <ostream>
 #include <type_traits>
 /// Primary namespace.
 namespace cal {
