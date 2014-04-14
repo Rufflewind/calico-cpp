@@ -195,8 +195,6 @@ using ntuple_t = typename ntuple<T, N>::type;
 template<class Function>
 struct packed_params {
     packed_params(const Function& f) : _f(f) {}
-
-private:
     Function _f;
     template<std::size_t J, std::size_t... I>
     struct fold {
@@ -215,7 +213,6 @@ private:
         }
     };
 
-public:
     /// Calls the function with the elements of a `tuple` as arguments.
     template<class Tuple>
     auto operator()(const Tuple& x) const
