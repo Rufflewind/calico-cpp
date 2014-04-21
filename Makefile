@@ -5,7 +5,7 @@ CXX03=--std=c++03
 CXX11=--std=c++11
 DL_NAME=snprintf_2.2
 DL_URL=http://www.ijs.si/software/snprintf/$(DL_NAME).tar.gz
-CXXFLAGS=$(CXX11) -Wall -I.
+CXXFLAGS=$(CXX11) -Wall -Wsign-conversion -I.
 CCFLAGS_EXT=-O3 # For external libraries
 CXXF=$(CXX) $(CXXFLAGS)
 
@@ -24,7 +24,7 @@ test: \
 
 $(TMP)/test_cxx11: test/cxx11.cpp calico/cxx11.hpp
 	mkdir -p $(TMP)
-	$(CXXF) -o $(TMP)/test_cxx11.o -c test/cxx11.cpp
+	$(CXXF) -Wno-sign-conversion -o $(TMP)/test_cxx11.o -c test/cxx11.cpp
 
 $(TMP)/test_iterator: test/iterator.cpp calico/iterator.hpp
 	mkdir -p $(TMP)

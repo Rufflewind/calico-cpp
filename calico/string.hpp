@@ -201,10 +201,10 @@ std::string format_str(const char* format, T&&... t) {
     if (n <= 0)
         throw runtime_error("cal::format_str: 1st snprintf failed");
     string s(n, 0);
-    n = snprintf(&s[0], n, format, forward<T>(t)...);
+    n = snprintf(&s[0], static_cast<std::size_t>(n), format, forward<T>(t)...);
     if (n < 0)
         throw runtime_error("cal::format_str: 2nd snprintf failed");
-    s.resize(n);
+    s.resize(static_cast<size_t>(n));
     return s;
 }
 
