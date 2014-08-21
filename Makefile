@@ -1,6 +1,6 @@
 CXXFLAGS=-std=c++11 -pedantic -Wall -Wsign-conversion -I.
 CXXF=$(CXX) $(CXXFLAGS)
-DESTDIR=/usr
+DESTDIR=/usr/local
 
 REMOTE=git@github.com:Rufflewind/calico.git
 
