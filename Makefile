@@ -1,5 +1,4 @@
 CXXFLAGS=-std=c++11 -pedantic -Wall -Wsign-conversion -I.
-CXXF=$(CXX) $(CXXFLAGS)
 DESTDIR=
 PREFIX=/usr/local
 
