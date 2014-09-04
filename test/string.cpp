@@ -12,8 +12,6 @@ int main() {
     assert(std::string(v.begin(), v.end() - 1) != orig);
     v[0] = 'd';
     assert(std::string(v.begin(), v.end() - 1) == orig);
-    std::cout << "3.200 <== Expect to see this\n"
-              << format_str("%.3f", 3.2)
-              << "\n";
+    assert(format_str("%.3f", 3.2) == "3.200");
     return 0;
 }

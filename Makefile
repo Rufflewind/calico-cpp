@@ -41,36 +41,43 @@ dist/doc/.git/config:
 .PHONY: clean doc test
 
 check: \
-    dist/tmp/libsnprintf.a \
-    dist/tmp/test_cxx11 \
-    dist/tmp/test_iterator \
-    dist/tmp/test_lens \
-    dist/tmp/test_string \
-    dist/tmp/test_utility
+    dist/tmp/test_cxx11.ok \
+    dist/tmp/test_iterator.ok \
+    dist/tmp/test_lens.ok \
+    dist/tmp/test_string.ok \
+    dist/tmp/test_utility.ok
 
-dist/tmp/test_cxx11: test/cxx11.cpp calico/cxx11.hpp
+dist/tmp/test_cxx11.ok: test/cxx11.cpp calico/cxx11.hpp
 	mkdir -p dist/tmp
-	$(CXX) $(CXXFLAGS) -Wno-sign-conversion -o $@ -c test/cxx11.cpp
+	$(CXX) $(CXXFLAGS) -Wno-sign-conversion -o /dev/null -c test/cxx11.cpp
+	touch $@
 
-dist/tmp/test_iterator: test/iterator.cpp calico/iterator.hpp
+dist/tmp/test_iterator.ok: test/iterator.cpp calico/iterator.hpp
 	mkdir -p dist/tmp
-	$(CXX) $(CXXFLAGS) -o $@ test/iterator.cpp \
-	        && dist/tmp/test_iterator
+	$(CXX) $(CXXFLAGS) -o dist/tmp/test_iterator test/iterator.cpp
+	dist/tmp/test_iterator
+	touch $@
 
-dist/tmp/test_lens: test/lens.cpp calico/lens.hpp
+dist/tmp/test_lens.ok: test/lens.cpp calico/lens.hpp
 	mkdir -p dist/tmp
-	$(CXX) $(CXXFLAGS) -o $@ test/lens.cpp \
-	        && dist/tmp/test_lens
+	$(CXX) $(CXXFLAGS) -o dist/tmp/test_lens test/lens.cpp
+	dist/tmp/test_lens
+	touch $@
 
-dist/tmp/test_string: test/string.cpp calico/string.hpp dist/tmp/libsnprintf.a
+# note: order of libsnprintf.a vs string.cpp matters!
+dist/tmp/test_string.ok: test/string.cpp calico/string.hpp \
+                         dist/tmp/libsnprintf.a
 	mkdir -p dist/tmp
-	$(CXX) $(CXXFLAGS) -o $@ dist/tmp/libsnprintf.a test/string.cpp \
-	        && dist/tmp/test_string
+	$(CXX) $(CXXFLAGS) -o dist/tmp/test_string dist/tmp/libsnprintf.a \
+	                      test/string.cpp
+	dist/tmp/test_string
+	touch $@
 
-dist/tmp/test_utility: test/utility.cpp calico/utility.hpp
+dist/tmp/test_utility.ok: test/utility.cpp calico/utility.hpp
 	mkdir -p dist/tmp
-	$(CXX) $(CXXFLAGS) -o $@ test/utility.cpp \
-	        && dist/tmp/test_utility
+	$(CXX) $(CXXFLAGS) -o dist/tmp/test_utility test/utility.cpp
+	dist/tmp/test_utility
+	touch $@
 
 dist/tmp/libsnprintf.a:
 	mkdir -p dist/tmp/snprintf

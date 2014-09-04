@@ -5,12 +5,15 @@
 /// Functions and types related to string-manipulation.
 ///
 #include <cstddef>
+#include <cstdio>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#if __cplusplus < 201103L
 extern "C" int snprintf(char*, std::size_t, const char*, ...);
+#endif
 namespace cal {
 
 #ifndef CALICO_HAVE_TO_STRING
