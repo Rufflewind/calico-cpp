@@ -23,6 +23,23 @@
 # define CAL_HAVE_RTTI
 #endif
 
+#if defined(__GXX_EXPERIMENTAL_CXX0X__)                 \
+    && (__GNUC__ >  4 ||                                \
+        __GNUC__ == 4 && (__GNUC_MINOR__ >  8 ||        \
+                          __GNUC_MINOR__ == 8 &&        \
+                          __GNUC_PATCHLEVEL__ > 1))     \
+    || __has_feature(cxx_reference_qualified_functions)
+# undef  CAL_HAVE_REFERENCE_QUALIFIED_FUNCTIONS
+# define CAL_HAVE_REFERENCE_QUALIFIED_FUNCTIONS
+#endif
+
+#undef  CAL_RVQF
+#ifdef CAL_HAVE_REFERENCE_QUALIFIED_FUNCTIONS
+# define CAL_RVQF &&
+#else
+# define CAL_RVQF
+#endif
+
 #undef CAL_NOEXCEPT_ND
 #ifndef NDEBUG
 # define CAL_NOEXCEPT_ND noexcept
@@ -382,7 +399,7 @@ public:
     /// Converts the array into a `std::unique_ptr`.
     ///
     /// @note     This will cause the array to become empty.
-    std::unique_ptr<value_type[]> as_unique_ptr() noexcept {
+    std::unique_ptr<value_type[]> as_unique_ptr() CAL_RVQF noexcept {
         _cap  = 0;
         _size = 0;
         return std::move(_buf);
