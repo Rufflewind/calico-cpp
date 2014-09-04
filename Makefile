@@ -42,6 +42,7 @@ check: \
     dist/tmp/test_cxx11.ok \
     dist/tmp/test_iterator.ok \
     dist/tmp/test_lens.ok \
+    dist/tmp/test_memory.ok \
     dist/tmp/test_string.ok \
     dist/tmp/test_utility.ok
 
@@ -60,6 +61,12 @@ dist/tmp/test_lens.ok: test/lens.cpp calico/lens.hpp
 	mkdir -p dist/tmp
 	$(CXX) $(CXXFLAGS) -o dist/tmp/test_lens test/lens.cpp
 	dist/tmp/test_lens
+	touch $@
+
+dist/tmp/test_memory.ok: test/memory.cpp calico/memory.hpp
+	mkdir -p dist/tmp
+	$(CXX) $(CXXFLAGS) -o dist/tmp/test_memory test/memory.cpp
+	dist/tmp/test_memory
 	touch $@
 
 # note: order of libsnprintf.a vs string.cpp matters!
