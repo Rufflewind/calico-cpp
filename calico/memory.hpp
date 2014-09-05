@@ -200,7 +200,7 @@ public:
     ///
     /// @return   The number of elements copied, which is the smaller of the
     ///           two slices.
-    size_type copy_from(const slice<const value_type>& other) const
+    size_type copy_from(slice<const value_type> other) const
     noexcept(_can_copy_with_memcpy) {
         const size_type min_size = std::min(size(), other.size());
         const value_type* const src_begin  = other.begin();
@@ -222,7 +222,7 @@ public:
     ///
     /// @warning  If `value_type` is not trivially copyable, the behavior is
     ///           undefined.
-    size_type copy_trivially_from(const slice<const value_type>& other) const
+    size_type copy_trivially_from(slice<const value_type> other) const
     noexcept {
         const size_type min_size = std::min(size(), other.size());
         std::memmove(begin(), other.begin(), min_size * sizeof(value_type));
@@ -307,21 +307,21 @@ slice<T> slice_from_array(T (& array)[N]) noexcept {
 /// Compares two slices using shallow equality: they are equal if and only if
 /// the slices reference the same memory locations.
 template<class T>
-bool operator==(const slice<T>& left, const slice<T>& right) {
+bool operator==(slice<T> left, slice<T> right) {
     return left.begin() == right.begin() && left.size() == right.size();
 }
 
 /// Compares two slices using shallow equality: they are equal if and only if
 /// the slices reference the same memory locations.
 template<class T>
-bool operator!=(const slice<T>& left, const slice<T>& right) {
+bool operator!=(slice<T> left, slice<T> right) {
     return !(left == right);
 }
 
 /// Compares two slices using deep equality: they are equal if and only if the
 /// individual elements are all equal.
 template<class T>
-bool equal(const slice<T>& left, const slice<T>& right) {
+bool equal(slice<T> left, slice<T> right) {
     if (left.size() != right.size())
         return false;
     for (std::size_t i = 0; i != left.size(); ++i)
