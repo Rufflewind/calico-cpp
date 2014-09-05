@@ -33,8 +33,9 @@
 # define CAL_HAVE_REFERENCE_QUALIFIED_FUNCTIONS
 #endif
 
-#undef  CAL_RVQF
-#ifdef CAL_HAVE_REFERENCE_QUALIFIED_FUNCTIONS
+#undef CAL_RVQF
+#if defined(CAL_HAVE_REFERENCE_QUALIFIED_FUNCTIONS) ||  \
+    defined(CALICO_DOC_ONLY)
 # define CAL_RVQF &&
 #else
 # define CAL_RVQF
@@ -348,8 +349,8 @@ public:
 
     /// Creates an array with size elements.
     ///
-    /// If `value_initialize` is `true`, the new elements are
-    /// value-initialized.  Otherwise, they are default-initialized.
+    /// If `value_initialize` is `false`, the new elements are
+    /// default-initialized.  Otherwise, they are value-initialized.
     ///
     /// On failure, raises `std::runtime_error` (not `std::bad_alloc`).
     vec(size_type size, bool value_initialize = true)
@@ -369,8 +370,8 @@ public:
 
     /// Resizes the vector.
     ///
-    /// If `value_initialize` is `true`, the new elements are
-    /// value-initialized.  Otherwise, they are default-initialized.
+    /// If `value_initialize` is `false`, the new elements are
+    /// default-initialized.  Otherwise, they are value-initialized.
     void resize(size_type new_size, bool value_initialize = true) {
         assert(_cap >= _size);
         if (_cap != new_size) {
@@ -383,8 +384,8 @@ public:
     /// Resizes the vector, avoiding reallocation if the new size is smaller
     /// than or equal to the current capacity.
     ///
-    /// If `value_initialize` is `true`, the new elements are
-    /// value-initialized.  Otherwise, they are default-initialized.
+    /// If `value_initialize` is `false`, the new elements are
+    /// default-initialized.  Otherwise, they are value-initialized.
     void resize_fast(size_type new_size) {
         assert(_cap >= _size);
         if (_cap < new_size) {
@@ -422,8 +423,8 @@ private:
 
     // Allocates an array with `count` elements.
     //
-    // If `value_initialize` is `true`, the new elements are
-    // value-initialized.  Otherwise, they are default-initialized.
+    // If `value_initialize` is `false`, the new elements are
+    // default-initialized.  Otherwise, they are value-initialized.
     static T* _alloc(std::size_t count, bool value_initialize = true) {
         T* ptr = value_initialize
             ? new (std::nothrow) T[count]()
