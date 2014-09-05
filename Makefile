@@ -2,8 +2,6 @@ CXXFLAGS=-std=c++11 -pedantic -Wall -Wsign-conversion -I.
 CXXF=$(CXX) $(CXXFLAGS)
 DESTDIR=/usr/local
 
-REMOTE=git@github.com:Rufflewind/calico.git
-
 SNPRINTF_NAME=snprintf_2.2
 SNPRINTF_URL=http://www.ijs.si/software/snprintf/$(SNPRINTF_NAME).tar.gz
 
@@ -31,12 +29,13 @@ doc-upload: doc dist/doc/.git/config
 
 dist/doc/.git/config:
 	mkdir -p dist/doc
-	cd dist/doc \
+	@URL=`git remote -v | grep origin | awk '{ printf "%s", $$2; exit }'` \
+	  && cd dist/doc \
 	  && git init \
 	  && git config user.name Bot \
 	  && git config user.email "<>" \
 	  && git commit -m _ --allow-empty \
-	  && git remote add origin "$(REMOTE)"
+	  && git remote add origin $$URL
 
 .PHONY: clean doc test
 
