@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <utility>
+#include <vector>
 #include <type_traits>
 
 #ifndef __has_feature
@@ -57,7 +58,7 @@ class slice;
 #endif
 
 template<class T>
-slice<T> slice_from_raw_parts(T* pointer, std::size_t size) CAL_NOEXCEPT_ND;
+slice<T> slice_from(T* pointer, std::size_t size) CAL_NOEXCEPT_ND;
 
 /// A non-owning reference to an array of elements.
 template<class T>
@@ -155,7 +156,7 @@ public:
 
     /// Returns an immutable version of itself.
     slice<const value_type> to_const() const noexcept {
-        return slice_from_raw_parts(
+        return slice_from(
             static_cast<const value_type*>(begin()),
             size()
         );
@@ -254,7 +255,7 @@ public:
 
 private:
 
-    friend slice slice_from_raw_parts<value_type>
+    friend slice slice_from<value_type>
         (value_type* pointer, size_type size) CAL_NOEXCEPT_ND;
 
     value_type* _ptr;
@@ -269,11 +270,11 @@ private:
 ///
 /// @warning   The slice does not take ownership of the memory.
 template<class T>
-slice<T> slice_from_raw_parts(T* pointer, std::size_t size) CAL_NOEXCEPT_ND {
+slice<T> slice_from(T* pointer, std::size_t size) CAL_NOEXCEPT_ND {
 #ifndef NDEBUG
     if ((size == 0) != (pointer == nullptr)) {
         std::ostringstream s;
-        s << "slice_from_raw_parts: bad pointer and size combination"
+        s << "slice_from: bad pointer and size combination"
              " [pointer = " << pointer << ", size = " << size << "]";
         throw std::runtime_error(s.str());
     }
@@ -285,7 +286,7 @@ slice<T> slice_from_raw_parts(T* pointer, std::size_t size) CAL_NOEXCEPT_ND {
 ///
 /// @warning   The slice does not take ownership of the memory.
 template<class T>
-slice<T> slice_from_raw_parts(T* begin, T* end) CAL_NOEXCEPT_ND {
+slice<T> slice_from(T* begin, T* end) CAL_NOEXCEPT_ND {
 #ifndef NDEBUG
     if (begin > end) {
         std::ostringstream s;
@@ -294,15 +295,31 @@ slice<T> slice_from_raw_parts(T* begin, T* end) CAL_NOEXCEPT_ND {
         throw std::runtime_error(s.str());
     }
 #endif
-    return slice_from_raw_parts(begin, static_cast<std::size_t>(end - begin));
+    return slice_from(begin, static_cast<std::size_t>(end - begin));
 }
 
-/// [Unsafe] Constructs a new slice from a reference to a fixed-size array.
+/// [Unsafe] Constructs a new slice from a fixed-size array.
 ///
 /// @warning   The slice does not take ownership of the memory.
 template<class T, std::size_t N>
-slice<T> slice_from_array(T (& array)[N]) noexcept {
-    return slice_from_raw_parts(array, N);
+slice<T> slice_from(T (& array)[N]) noexcept {
+    return slice_from(array, N);
+}
+
+/// [Unsafe] Constructs a new slice from an `std::vector`.
+///
+/// @warning   The slice does not take ownership of the memory.
+template<class T>
+slice<T> slice_from(std::vector<T>& v) {
+    return slice_from(&v[0], &v[v.size()]);
+}
+
+/// [Unsafe] Constructs a new slice from an `std::vector`.
+///
+/// @warning   The slice does not take ownership of the memory.
+template<class T>
+slice<const T> slice_from(const std::vector<T>& v) {
+    return slice_from(&v[0], &v[v.size()]);
 }
 
 /// Compares two slices using shallow equality: they are equal if and only if
@@ -331,9 +348,9 @@ bool equal(slice<T> left, slice<T> right) {
     return true;
 }
 
-/// An owned, dynamic array of elements.
+/// An owned, dynamically allocated array of elements.
 template<class T>
-class vec {
+class array {
 public:
 
     /// Type of the elements.
@@ -343,7 +360,7 @@ public:
     typedef std::size_t size_type;
 
     /// Creates an empty array.
-    vec() noexcept
+    array() noexcept
         : _cap(),
           _size() {}
 
@@ -353,7 +370,7 @@ public:
     /// default-initialized.  Otherwise, they are value-initialized.
     ///
     /// On failure, raises `std::runtime_error` (not `std::bad_alloc`).
-    vec(size_type size, bool value_initialize = true)
+    array(size_type size, bool value_initialize = true)
         : _cap(),
           _size(size),
           _buf(_alloc(size, value_initialize)) {}
@@ -368,7 +385,7 @@ public:
         _cap = capacity;
     }
 
-    /// Resizes the vector.
+    /// Resizes the array.
     ///
     /// If `value_initialize` is `false`, the new elements are
     /// default-initialized.  Otherwise, they are value-initialized.
@@ -381,7 +398,7 @@ public:
         _size = new_size;
     }
 
-    /// Resizes the vector, avoiding reallocation if the new size is smaller
+    /// Resizes the array, avoiding reallocation if the new size is smaller
     /// than or equal to the current capacity.
     ///
     /// If `value_initialize` is `false`, the new elements are
@@ -406,13 +423,13 @@ public:
         return std::move(_buf);
     }
 
-    /// [Unsafe] Obtain a slice of the entire vector.
+    /// [Unsafe] Obtain a slice of the entire array.
     ///
     /// @warning   The slice does not take ownership of the memory.  Any
-    ///            operation that modifies the vector can invalidate the
+    ///            operation that modifies the array can invalidate the
     ///            slice.
     slice<value_type> to_slice() const noexcept {
-        return slice_from_raw_parts(_buf.get(), _size);
+        return slice_from(_buf.get(), _size);
     }
 
 private:
@@ -426,13 +443,12 @@ private:
     // If `value_initialize` is `false`, the new elements are
     // default-initialized.  Otherwise, they are value-initialized.
     static T* _alloc(std::size_t count, bool value_initialize = true) {
-        T* ptr = value_initialize
-            ? new (std::nothrow) T[count]()
-            : new (std::nothrow) T[count];
+        T* ptr = value_initialize ? new (std::nothrow) T[count]()
+                                  : new (std::nothrow) T[count];
         if (ptr)
             return ptr;
         std::ostringstream s;
-        s << "vec::_alloc: can't allocate [count = " << count
+        s << "array::_alloc: can't allocate [count = " << count
 #ifdef CAL_HAVE_RTTI
           << ", type = " << typeid(value_type).name()
 #endif
