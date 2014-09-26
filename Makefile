@@ -1,6 +1,7 @@
 CXXFLAGS=-std=c++11 -pedantic -Wall -Wsign-conversion -I.
 CXXF=$(CXX) $(CXXFLAGS)
-DESTDIR=/usr/local
+DESTDIR=
+PREFIX=/usr/local
 
 SNPRINTF_NAME=snprintf_2.2
 SNPRINTF_URL=http://www.ijs.si/software/snprintf/$(SNPRINTF_NAME).tar.gz
@@ -11,11 +12,11 @@ clean:
 	rm -fr dist
 
 install: all
-	install -d $(DESTDIR)/include/calico
-	install -m644 -t $(DESTDIR)/include/calico calico/*
+	install -d $(DESTDIR)$(PREFIX)/include/calico
+	install -m644 -t $(DESTDIR)$(PREFIX)/include/calico calico/*
 
 uninstall:
-	rm -fr $(DESTDIR)/include/calico
+	rm -fr $(DESTDIR)$(PREFIX)/include/calico
 
 doc:
 	mkdir -p dist/doc
