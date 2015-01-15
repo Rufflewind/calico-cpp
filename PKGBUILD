@@ -1,4 +1,3 @@
-# -*- shell-script -*-
 # Maintainer: Phil Ruffwind <rf@rufflewind.com>
 pkgname=calico-git
 pkgver=latest
@@ -23,6 +22,6 @@ build() {
 
 package() {
     cd "$srcdir/$pkgname"
-    make DESTDIR="$pkgdir/usr" install
+    make DESTDIR="$pkgdir" PREFIX=/usr install
     install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
