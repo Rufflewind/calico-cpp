@@ -1,5 +1,4 @@
 CXXFLAGS=-std=c++11 -pedantic -Wall -Wsign-conversion -I.
-DESTDIR=
 PREFIX=/usr/local
 
 SNPRINTF_NAME=snprintf_2.2
