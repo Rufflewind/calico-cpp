@@ -8,4 +8,4 @@ A small utility library for C++.  Contains:
 - wrapper around the Windows Unicode entry point functions (`wmain`,
   `wWinMain`)
 
-Generated documentation can be found [here](http://rufflewind.com/calico).
+Generated documentation can be found [here](http://rufflewind.com/calico-cpp).
