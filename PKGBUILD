@@ -1,13 +1,13 @@
 # Maintainer: Phil Ruffwind <rf@rufflewind.com>
 pkgname=calico-git
-pkgver=latest
+pkgver=0.9.0.r32.16b7a07
 pkgrel=1
 pkgdesc="Utilities for C++"
 arch=(any)
-url=https://github.com/Rufflewind/calico
+url=https://github.com/Rufflewind/calico-cpp
 license=(MIT)
 makedepends=(git)
-source=($pkgname::git://github.com/Rufflewind/calico)
+source=($pkgname::git://github.com/Rufflewind/calico-cpp)
 sha256sums=(SKIP)
 
 pkgver() {
